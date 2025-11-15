@@ -11,11 +11,11 @@ Version: 3.0.0
    - A heading MAY omit body text if immediately followed by child headings.
    - Do not add filler prose solely to satisfy a structural placeholder.
 
-3. Blank Line Restrictions Around Headings
-   - No blank line immediately before any heading.
+3. Blank Line Restrictions Around Headings (High-Density Structural Artifact)
+   - No blank line immediately before any heading, regardless of heading level or preceding content. This restriction is **absolute** and overrides all conventional document spacing practices for visual separation.
    - No blank line immediately after any heading.
-   - A heading is followed directly by its first prose line or by a block (source/example).
-   - After at least one prose line, a single blank line MAY separate paragraphs or precede a block (subject to Rule 29).
+   - A heading MUST be followed *directly* by its first prose line, a block directive (`#+BEGIN_...`), or the next child/sibling heading.
+   - The ONLY allowed blank lines in the document's prose are single blank lines used to separate adjacent paragraphs, as governed by Rule 29.
 
 4. Enumerations as Headings (List Syntax Prohibited)
    - All Org list constructs are forbidden (unordered: `-`, `+`, `*`; ordered: `1.`, `2.`; checkboxes; description lists `::`).
@@ -227,3 +227,9 @@ Version: 3.0.0
     - Each list item becomes a child heading (one level deeper).
     - Do NOT create sibling headings with the section title as a repeated prefix.
     - Look for structural indicators: colons after category names, indentation, explicit grouping, or contextual relationship among items.
+
+46. Forbidden Citation, Attribution, and Agent Tracking Markers (Absolute Agent Override)
+    - All forms of explicit source citation, attribution, tracking markers, and agent-added metadata are strictly forbidden in the final transformed document.
+    - The transformed output MUST be presented as a standalone artifact, without external references.
+    - Prohibition includes Inline Source References (e.g., `[1]`, `(Smith, 2024)`), Footnote / Endnote Markers, and Agent/Tool Metadata (e.g., ``).
+    - No text whose sole purpose is source referencing is permitted in the document body or headings.

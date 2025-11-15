@@ -1,0 +1,31 @@
+* Troubleshooting tips
+** 1. Prioritize Observability: Reduce System State Uncertainty
+The single biggest time sink in debugging is a lack of information. Your first goal is to force the system to reveal its precise state at the point of failure.
+*** Fix the Debugging Pipeline (Eliminate Silent Errors)
+If an error is vague, non-specific (e.g., "An error occurred," "Skipping sample"), or completely suppressed, **assume your logging is the problem**, not the code itself.
+**** Action: Immediately wrap the failing section in a handler that prints a **full, language-specific traceback** (e.g., `traceback.print_exc()` in Python).
+**** Goal: Transform the error from a vague guess into a precise file and line number.
+*** Validate Inputs at Every Boundary (The Data Contract)
+Errors frequently occur at the hand-off points between separate components (e.g., a build tool writing a file for a script to read, a function preparing a dictionary for a framework).
+**** Principle: Confirm that the output of component A (the provider) honors the exact expectations (the "contract") of component B (the consumer).
+**** Action: Use debugging statements to inspect the **data structure's shape, content, and key names** immediately before and after every major transformation or I/O operation.
+** 2. Decompose and Isolate (The Layered Approach)
+Break down the system into the smallest testable units and isolate the failure to one layer or one function.
+*** Test Components in Isolation (Surgical Debugging)
+When a large system fails, the bug is often masked by a separate, innocuous feature that changes the system state.
+**** Action: Temporarily comment out all *non-essential* functionality (e.g., network calls, database writes, UI updates) and run the simplest possible test case that still triggers the error.
+**** Goal: Strip the failure down to a single function or line of code that can be reliably reproduced. This prevents a minor logic error from masquerade as a complex logic error deep inside the program.
+** 3. Pinpoint the Nature of the Failure (The Error Taxonomy)
+Successful troubleshooting depends on correctly classifying the error.
+*** Distinguish Between Error Categories
+Be ready to pivot your strategy based on the error type:
+**** Logic Errors (Business Rules)
+The code runs but produces the wrong result (e.g., filtering logic drops too many items). Requires stepping through the code's execution flow.
+**** Data Integrity Errors (Input/Contract)
+The code fails because the input data violates an assumption (e.g., a NumPy array is empty, a required dictionary key is missing, leading to `KeyError`). Requires focusing on input validation and boundary checking.
+**** Configuration Errors (Framework Mismatch)
+The code fails because an external library or framework requires a parameter, version, or specific data structure that wasn't provided (e.g., `NameError: PeptModel`). Requires checking documentation.
+*** Consult External Documentation for Configuration Errors
+If the error references a specific class, parameter, or constant used by a large framework (e.g., `group_by_length`, `input_ids`), treat it as a documentation problem.
+**** Principle: Use the error message as a direct search query against the framework's official API documentation.
+**** Goal: Quickly confirm if the argument you provided matches the framework's required syntax, constraints, or expected data format, bypassing internal code debugging.
