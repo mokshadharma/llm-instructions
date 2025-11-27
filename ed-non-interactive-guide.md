@@ -1,3 +1,4 @@
+import time
 # Robust Non-Interactive Editing with `ed`
 
 This guide outlines a fail-safe methodology for programmatically editing files using the `ed` line editor. By following these strict procedures, you can eliminate common errors like shifting line numbers and broken syntax.
@@ -71,18 +72,14 @@ Using `'EOF'` (with quotes) prevents the shell from expanding variables (`$var`)
 ```bash
 ed -s filename.py <<'EOF'
 H
-# 1. Edit line 200 (Highest)
 200a
     def new_method(self):
         pass
 .
-# 2. Edit line 83 (Middle)
-# Use "Comma Safety" pattern (see below)
 83s/$/,/
 83a
     NewItem
 .
-# 3. Edit line 1 (Lowest)
 1i
 import time
 .
@@ -90,9 +87,8 @@ w
 q
 EOF
 ```
-
 ### 4. Verify: Check Your Work
-After running the script, verify the changes immediately using the same tools used in step 1.
+After running the script, verify the changes immediately using the same tools used in step 1.,
 
 ```bash
 # Check the import
@@ -121,7 +117,7 @@ Even with bottom-up editing, you might target the wrong line if the file changed
 **The Technique:**
 Use the substitute command `s/pattern/&/` to assert that the target line matches a specific pattern before executing the edit.
 *   **Why:** If the pattern is not found, `ed` returns an error (`?`) and aborts the script immediately. This prevents the script from editing the wrong line or continuing in an invalid state.
-*   **Note:** You must escape special regex characters (like `*`, `[`, `.`) in the pattern.
+* **Note:** You must escape special regex characters (like `*`, `[`, `.`) in the pattern. Failure to escape `[` or `.` will cause `ed` to interpret them as regex classes or wildcards, leading to "No match" errors or incorrect edits.
 
 **Example:**
 Instead of blindly appending to line 83:
@@ -131,7 +127,7 @@ Instead of blindly appending to line 83:
     NewItem
 .
 ```
-
+* **Note:** You must escape special regex characters (like `*`, `[`, `.`) in the pattern. Failure to escape `[` or `.` will cause `ed` to interpret them as regex classes or wildcards, leading to "No match" errors or incorrect edits.
 **Strict Assertion:**
 Assert that line 83 actually contains "Keys" before editing:
 ```bash
