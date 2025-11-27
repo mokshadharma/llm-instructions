@@ -1,4 +1,3 @@
-import time
 # Robust Non-Interactive Editing with `ed`
 
 This guide outlines a fail-safe methodology for programmatically editing files using the `ed` line editor. By following these strict procedures, you can eliminate common errors like shifting line numbers and broken syntax.
