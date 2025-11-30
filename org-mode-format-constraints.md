@@ -172,7 +172,7 @@ Version: 3.0.0
     - Performance or size concerns are accepted trade-offs.
 
 38. Specification Versioning
-    - The specification uses Semantic Versioning (MAJOR.MINOR.PATCH).
+    - This specification uses Semantic Versioning (MAJOR.MINOR.PATCH).
     - MAJOR: Backward-incompatible rule changes (previously valid documents may become invalid).
     - MINOR: Backward-compatible additions or relaxations (previously valid documents remain valid).
     - PATCH: Editorial corrections that do not change validation outcomes.
@@ -185,9 +185,9 @@ Version: 3.0.0
     - Tooling must not expect or parse an in-document changelog.
 
 40. Version Declaration Line
-    - The first non-blank line immediately following the top-level heading MUST be `Version: MAJOR.MINOR.PATCH`.
+    - The first non-blank line immediately following the top-level heading in this specification is `Version: MAJOR.MINOR.PATCH`.
     - This line is the canonical in-file source of the current specification version.
-    - No other lines may begin with `Version:` elsewhere in the document.
+    - No other lines may begin with `Version:` elsewhere in this document.
 
 41. Content Consolidation in Headings
     - When converting list items to headings, all content MUST be incorporated into the heading title itself whenever possible.
