@@ -316,18 +316,38 @@ H
 EDSCRIPT
 ```
 
-### Prefer Shell Tools for Read-Only Inspection
-For simply viewing file content (not editing), shell tools are often safer and more convenient:
+### Verify Edits with `ed` (Not `read_file`)
 
+After editing a file with `ed`, always verify using `ed` itself or terminal commands. **Do not rely on IDE file-reading tools** (like VS Code's `read_file`), as they may return cached/stale content that doesn't reflect recent external changes.
+
+**Use `ed` with the `n` command for targeted verification:**
 ```bash
-# View last N lines with line numbers
-tail -n 15 filename.py | nl -ba -v 221   # -v sets starting line number
+# Print lines 50-60 with line numbers
+ed -s file.py <<'EDSCRIPT'
+H
+50,60n
+EDSCRIPT
 
-# View specific range
-sed -n '225,235p' filename.py | nl -ba -v 225
+# Print from line 225 to end of file
+ed -s file.py <<'EDSCRIPT'
+H
+225,$n
+EDSCRIPT
 
-# Get line count
-wc -l < filename.py
+# Print last 10 lines with line numbers
+ed -s file.py <<'EDSCRIPT'
+H
+$-9,$n
+EDSCRIPT
 ```
 
-Reserve `ed` for when you need to **edit**, not just view.
+**Why `ed` over shell tools?**
+- `cat` - dumps entire file, no line numbers, can be huge
+- `head`/`tail` - no line numbers, requires mental math to determine positions
+- `sed -n 'Np'` - no line numbers
+- `ed` with `n` - gives exact lines with their line numbers, confirming both content and position
+
+**Get line count:**
+```bash
+wc -l < filename.py
+```
