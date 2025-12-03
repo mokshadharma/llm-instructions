@@ -2,6 +2,18 @@
 
 This guide outlines a fail-safe methodology for programmatically editing files using the `ed` line editor. By following these strict procedures, you can eliminate common errors like shifting line numbers and broken syntax.
 
+
+## Always Use `ed` for File Editing
+
+When editing files programmatically, **always use `ed`**. Do not use other tools like `sed`, `replace_string_in_file`, or similar alternatives.
+
+**Why?**
+- The workflow requires discovering exact line numbers before editing, which forces you to verify the current file state
+- Edits target specific lines, not pattern matches that could occur in unexpected locations
+- Strict contextual anchoring catches errors before they corrupt files
+- `ed` provides atomic, all-or-nothing edits
+- One tool, one methodology, fewer mistakes
+
 ## The Golden Rule: Bottom-Up Editing
 
 When performing multiple edits on a single file, **always apply changes in reverse line-number order (descending)**.
@@ -57,10 +69,10 @@ To robustly determine the file's indentation width (spaces or tabs) without gues
 awk '!NF { next } match($0, /^[ \t]*/){ curr = RLENGTH; if (prev_defined && curr > prev) { print curr - prev; exit } prev = curr; prev_defined = 1 }' filename.py
 ```
 ### 3. Script: Construct the Atomic Edit
-Create a single script using a **Quoted Heredoc** (`<<'EOF'`).
+Create a single script using a **Quoted Heredoc** (`<<'EDSCRIPT'`).
 
 **Why Quoted Heredoc?**
-Using `'EOF'` (with quotes) prevents the shell from expanding variables (`$var`) or interpreting backslashes. This allows you to paste code snippets (including quotes and special characters) directly into the script without the "quoting nightmare" of `printf`.
+Using `'EDSCRIPT'` (with quotes) prevents the shell from expanding variables (`$var`) or interpreting backslashes. This allows you to paste code snippets (including quotes and special characters) directly into the script without the "quoting nightmare" of `printf`.
 
 **Scenario:**
 1.  Add a method after line 200.
@@ -69,7 +81,7 @@ Using `'EOF'` (with quotes) prevents the shell from expanding variables (`$var`)
 
 **The Script:**
 ```bash
-ed -s filename.py <<'EOF'
+ed -s filename.py <<'EDSCRIPT'
 H
 200a
     def new_method(self):
@@ -84,7 +96,7 @@ import time
 .
 w
 q
-EOF
+EDSCRIPT
 ```
 ### 4. Verify: Check Your Work
 After running the script, verify the changes immediately using the same tools used in step 1.,
@@ -159,17 +171,24 @@ Combine a substitution (to ensure the comma exists) with the append command.
 This works perfectly in reverse order because the `a` command inserts *after* the target line, so line 83 remains stable for the substitution.
 
 ### Atomic Scripts
-Always use a single `ed` invocation with a **Quoted Heredoc** (`<<'EOF'`). This ensures the file is opened and written only once, prevents race conditions, and handles special characters safely.
+Always use a single `ed` invocation with a **Quoted Heredoc** (`<<'EDSCRIPT'`). This ensures the file is opened and written only once, prevents race conditions, and handles special characters safely.
 
 ```bash
 # Good
-ed -s file <<'EOF'
+ed -s file <<'EDSCRIPT'
 H
 ...commands...
 w
 q
-EOF
+EDSCRIPT
 ```
+
+### Heredoc Delimiter Conflicts
+
+If the content you're inserting contains your heredoc delimiter, the script will terminate prematurely and fail.
+
+**Why `EDSCRIPT` instead of `EOF`?**
+`EOF` is extremely common in code examples and documentation. Using `EDSCRIPT` as the standard delimiter avoids conflicts when inserting content that contains heredoc examples.
 
 ## Essential Commands Reference
 
@@ -181,5 +200,59 @@ EOF
 | `c`           | Change (replace) the current line(s).                   |
 | `d`           | Delete the current line(s).                             |
 | `s/old/new/`  | Substitute text on the current line.                    |
+| `m`           | Move line(s) to after another line.                     |
 | `w`           | Write changes to disk.                                  |
 | `q`           | Quit.                                                   |
+
+### Command Limitations
+
+**`s/old/new/`** modifies text *within* a line. It cannot:
+- Move lines to different positions
+- Swap line order
+- Delete entire lines
+- Insert new lines
+
+For structural changes (reordering, moving, deleting), use `d`, `m`, `a`, or `i`.
+
+## Swapping or Reordering Lines
+
+Swapping lines requires **delete + insert** or **move**, not substitution. The `s/` command changes text within a line; it cannot move lines.
+
+**Common Mistake:** Using substitution to "swap" identifiers
+```bash
+# WRONG: This does NOT swap lines - it just renames content in place
+10s/TASK-029/TASK-030/
+11s/TASK-030/TASK-029/
+# Result: Line 10 still comes before line 11, just with swapped labels
+```
+
+**Solution 1: Use the `m` (move) command**
+```bash
+ed -s file.md <<'SCRIPT'
+H
+# Move line 11 to after line 9 (effectively swaps lines 10 and 11)
+11m9
+w
+q
+SCRIPT
+```
+
+**Solution 2: Delete and reinsert in new order**
+```bash
+ed -s file.md <<'SCRIPT'
+H
+# First, capture the content you need (or know it beforehand)
+# Delete both lines (bottom-up to preserve line numbers)
+11d
+10d
+# Insert in new order after line 9
+9a
+| TASK-029 | (content from original line 11) |
+| TASK-030 | (content from original line 10) |
+.
+w
+q
+SCRIPT
+```
+
+**Key insight:** To reorder lines, you must physically move them using `m` (move), or `d` (delete) combined with `a`/`i` (append/insert). Substitution only changes text within existing lines.
