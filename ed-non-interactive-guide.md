@@ -256,3 +256,78 @@ SCRIPT
 ```
 
 **Key insight:** To reorder lines, you must physically move them using `m` (move), or `d` (delete) combined with `a`/`i` (append/insert). Substitution only changes text within existing lines.
+
+## Safe Range Patterns for Querying
+
+When exploring a file's content, use patterns that can't fail due to out-of-bounds addresses.
+
+### Getting File Length First (Two-Step)
+If you need precise control, get the line count first in a separate command:
+```bash
+# Step 1: Get line count
+wc -l < filename.py   # Returns just the number
+
+# Step 2: Use that info to construct valid ranges
+```
+
+### Using `$` for "End of File"
+The `$` address always refers to the last line, regardless of file length. Use it instead of hardcoded line numbers when you don't know the file size:
+
+```bash
+# WRONG: Assumes file has at least 236 lines
+ed -s file.py <<'EDSCRIPT'
+H
+225,236n
+EDSCRIPT
+
+# RIGHT: Print from line 225 to end of file (whatever that is)
+ed -s file.py <<'EDSCRIPT'
+H
+225,$n
+EDSCRIPT
+
+# RIGHT: Print last 15 lines with line numbers
+ed -s file.py <<'EDSCRIPT'
+H
+$-14,$n
+EDSCRIPT
+```
+
+### Don't Combine Discovery with Assumptions
+Never issue multiple commands in one script where a later command depends on assumptions about output you haven't seen yet.
+
+```bash
+# WRONG: Assumes 236 exists based on nothing
+ed -s file.py <<'EDSCRIPT'
+H
+$=
+225,236n
+EDSCRIPT
+
+# RIGHT: Get length first, then query in a second invocation
+ed -s file.py <<'EDSCRIPT'
+H
+$=
+EDSCRIPT
+# Now you know it's 235 lines, so query accordingly:
+ed -s file.py <<'EDSCRIPT'
+H
+225,$n
+EDSCRIPT
+```
+
+### Prefer Shell Tools for Read-Only Inspection
+For simply viewing file content (not editing), shell tools are often safer and more convenient:
+
+```bash
+# View last N lines with line numbers
+tail -n 15 filename.py | nl -ba -v 221   # -v sets starting line number
+
+# View specific range
+sed -n '225,235p' filename.py | nl -ba -v 225
+
+# Get line count
+wc -l < filename.py
+```
+
+Reserve `ed` for when you need to **edit**, not just view.
