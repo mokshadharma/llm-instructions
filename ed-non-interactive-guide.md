@@ -33,34 +33,24 @@ When performing multiple edits on a single file, **always apply changes in rever
 
 ## The Robust Workflow
 
-### 1. Locate: Definitively Determine Line Numbers
-*Immediately* before generating your edit script, use non-interactive tools to find the exact line numbers. Do not guess.
+### 1. Locate AND Measure (REQUIRED BEFORE EDITING)
 
-**Using `rg` (ripgrep) with line numbers:**
-```bash
-rg -n "class MyClass" filename.py
-```
+**DO NOT write any edit script until you complete both parts of this step.**
 
-**Using `ed` to print specific ranges:**
-```bash
-# Print lines 10-20 with line numbers
-echo '10,20n' | ed -s filename.py
-```
-
-
-### 2. Measure: Calculate Exact Indentation
-Guessing indentation leads to `IndentationError` in Python and broken formatting in other languages. **Always** calculate the exact indentation of the target line before generating the script.
-
-**The Standardized Indentation Check:**
-Use this `awk` command to get the integer count of leading spaces/tabs for a specific line number (`n`).
+When preparing to edit, run these commands together to get line numbers AND indentation:
 
 ```bash
-awk -v n=140 'NR==n {match($0, /^[ \t]*/); print length(substr($0, RSTART, RLENGTH))}' filename.py
+# View lines with numbers to find your target
+ed -s FILE <<'EDSCRIPT'
+H
+START,ENDn
+EDSCRIPT
+
+# Get exact indentation of the line you'll edit (replace LINE with the line number)
+awk -v n=LINE 'NR==n {match($0, /^[ \t]*/); print length(substr($0, RSTART, RLENGTH))}' FILE
 ```
 
-**How to use the result:**
-1. **Sibling Line:** If inserting a line at the same level, use the returned number (e.g., `12` spaces).
-2. **Child Block:** If inserting into a new block (e.g., after a line ending in `:`), calculate the file's indent width (see below) and add it to the result (e.g., `12 + 4 = 16` spaces).
+**Record the indentation number before proceeding.** Use exactly that many spaces for sibling lines, or add the file's indent width (typically 4) for child blocks.
 
 **Detecting Indent Width:**
 To robustly determine the file's indentation width (spaces or tabs) without guessing, run this command:
@@ -68,7 +58,17 @@ To robustly determine the file's indentation width (spaces or tabs) without gues
 ```bash
 awk '!NF { next } match($0, /^[ \t]*/){ curr = RLENGTH; if (prev_defined && curr > prev) { print curr - prev; exit } prev = curr; prev_defined = 1 }' filename.py
 ```
-### 3. Script: Construct the Atomic Edit
+
+**Common Failure Mode:**
+```bash
+# You think: "it's inside a try block in a function, so probably 12 spaces"
+# Reality: it's 8 spaces
+# Result: IndentationError, multiple retry attempts, wasted time
+```
+
+Guessing indentation WILL fail. Measuring takes 5 seconds. Fixing failed edits takes minutes.
+
+### 2. Script: Construct the Atomic Edit
 Create a single script using a **Quoted Heredoc** (`<<'EDSCRIPT'`).
 
 **Why Quoted Heredoc?**
@@ -98,7 +98,7 @@ w
 q
 EDSCRIPT
 ```
-### 4. Verify: Check Your Work
+### 3. Verify: Check Your Work
 After running the script, verify the changes immediately using the same tools used in step 1.,
 
 ```bash
