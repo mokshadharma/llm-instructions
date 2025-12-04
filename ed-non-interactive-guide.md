@@ -4,7 +4,7 @@ This guide outlines a fail-safe methodology for programmatically editing files u
 
 ## Quick Reference (TL;DR)
 
-1. **Locate:** `ed -s FILE <<'EDSCRIPT'` ... `START,ENDn` ... `EDSCRIPT`
+1. **Locate:** `ed -s FILE <<'EDSCRIPT4829'` ... `START,ENDn` ... `EDSCRIPT4829`
 2. **Measure indent:** `awk -v n=LINE 'NR==n {match($0, /^[ \t]*/); print length(substr($0, RSTART, RLENGTH))}' FILE`
 3. **Edit bottom-up:** Start from highest line number, work down
 4. **Script structure:** `H` first, `w` then `q` last
@@ -52,10 +52,10 @@ When preparing to edit, run these commands together to get line numbers, and ind
 
 ```bash
 # View lines with numbers to find your target
-ed -s FILE <<'EDSCRIPT'
+ed -s FILE <<'EDSCRIPT4829'
 H
 START,ENDn
-EDSCRIPT
+EDSCRIPT4829
 
 # Get exact indentation of the line you'll edit (replace LINE with the line number)
 awk -v n=LINE 'NR==n {match($0, /^[ \t]*/); print length(substr($0, RSTART, RLENGTH))}' FILE
@@ -97,7 +97,7 @@ awk -v n=47 'NR==n {match($0, /^[ \t]*/); print length(substr($0, RSTART, RLENGT
 Guessing indentation WILL fail. Measuring takes 5 seconds. Fixing failed edits takes minutes.
 
 ### 2. Script: Construct the Atomic Edit
-Create a single script using a **Quoted Heredoc** (`<<'EDSCRIPT'`).
+Create a single script using a **Quoted Heredoc** (`<<'EDSCRIPT4829'`).
 
 **Why Quoted Heredoc?**
 Using `'EDSCRIPT'` (with quotes) prevents the shell from expanding variables (`$var`) or interpreting backslashes. This allows you to paste code snippets (including quotes and special characters) directly into the script without the "quoting nightmare" of `printf`.
@@ -109,7 +109,7 @@ Using `'EDSCRIPT'` (with quotes) prevents the shell from expanding variables (`$
 
 **The Script:**
 ```bash
-ed -s filename.py <<'EDSCRIPT'
+ed -s filename.py <<'EDSCRIPT4829'
 H
 200a
     def new_method(self):
@@ -124,7 +124,7 @@ import time
 .
 w
 q
-EDSCRIPT
+EDSCRIPT4829
 ```
 ### 3. Verify: Check Your Work
 After running the script, verify the changes immediately using the same tools used in step 1.,
@@ -187,7 +187,7 @@ When using `s/pattern/&/` to *test* whether a line matches (without intending to
 **Solutions:**
 - **For verification only:** Use `Q` (uppercase) to quit unconditionally without saving:
   ```bash
-  ed -s file.py <<'EDSCRIPT'
+  ed -s file.py <<'EDSCRIPT4829'
   H
   83s/Keys/&/
   Q
@@ -215,16 +215,16 @@ Combine a substitution (to ensure the comma exists) with the append command.
 This works perfectly in reverse order because the `a` command inserts *after* the target line, so line 83 remains stable for the substitution.
 
 ### Atomic Scripts
-Always use a single `ed` invocation with a **Quoted Heredoc** (`<<'EDSCRIPT'`). This ensures the file is opened and written only once, prevents race conditions, and handles special characters safely.
+Always use a single `ed` invocation with a **Quoted Heredoc** (`<<'EDSCRIPT4829'`). This ensures the file is opened and written only once, prevents race conditions, and handles special characters safely.
 
 ```bash
 # Good
-ed -s file <<'EDSCRIPT'
+ed -s file <<'EDSCRIPT4829'
 H
 ...commands...
 w
 q
-EDSCRIPT
+EDSCRIPT4829
 ```
 
 ### Heredoc Delimiter Conflicts
@@ -305,18 +305,18 @@ Swapping lines requires **delete + insert** or **move**, not substitution. The `
 
 **Solution 1: Use the `m` (move) command**
 ```bash
-ed -s file.md <<'EDSCRIPT'
+ed -s file.md <<'EDSCRIPT4829'
 H
 # Move line 11 to after line 9 (effectively swaps lines 10 and 11)
 11m9
 w
 q
-EDSCRIPT
+EDSCRIPT4829
 ```
 
 **Solution 2: Delete and reinsert in new order**
 ```bash
-ed -s file.md <<'EDSCRIPT'
+ed -s file.md <<'EDSCRIPT4829'
 H
 # First, capture the content you need (or know it beforehand)
 # Delete both lines (bottom-up to preserve line numbers)
@@ -329,7 +329,7 @@ H
 .
 w
 q
-EDSCRIPT
+EDSCRIPT4829
 ```
 
 **Key insight:** To reorder lines, you must physically move them using `m` (move), or `d` (delete) combined with `a`/`i` (append/insert). Substitution only changes text within existing lines.
@@ -362,7 +362,7 @@ To delete a block of consecutive lines, use a **range delete** - not individual 
 
 **Example: Deleting non-contiguous lines**
 ```bash
-ed -s file.py <<'EDSCRIPT'
+ed -s file.py <<'EDSCRIPT4829'
 H
 # Delete lines 120, 85, and 12 (bottom-up to preserve line numbers)
 120d
@@ -370,7 +370,7 @@ H
 12d
 w
 q
-EDSCRIPT
+EDSCRIPT4829
 ```
 
 ## Safe Range Patterns for Querying
@@ -391,22 +391,22 @@ The `$` address always refers to the last line, regardless of file length. Use i
 
 ```bash
 # WRONG: Assumes file has at least 236 lines
-ed -s file.py <<'EDSCRIPT'
+ed -s file.py <<'EDSCRIPT4829'
 H
 225,236n
-EDSCRIPT
+EDSCRIPT4829
 
 # RIGHT: Print from line 225 to end of file (whatever that is)
-ed -s file.py <<'EDSCRIPT'
+ed -s file.py <<'EDSCRIPT4829'
 H
 225,$n
-EDSCRIPT
+EDSCRIPT4829
 
 # RIGHT: Print last 15 lines with line numbers
-ed -s file.py <<'EDSCRIPT'
+ed -s file.py <<'EDSCRIPT4829'
 H
 $-14,$n
-EDSCRIPT
+EDSCRIPT4829
 ```
 
 ### Don't Combine Discovery with Assumptions
@@ -414,22 +414,22 @@ Never issue multiple commands in one script where a later command depends on ass
 
 ```bash
 # WRONG: Assumes 236 exists based on nothing
-ed -s file.py <<'EDSCRIPT'
+ed -s file.py <<'EDSCRIPT4829'
 H
 $=
 225,236n
-EDSCRIPT
+EDSCRIPT4829
 
 # RIGHT: Get length first, then query in a second invocation
-ed -s file.py <<'EDSCRIPT'
+ed -s file.py <<'EDSCRIPT4829'
 H
 $=
-EDSCRIPT
+EDSCRIPT4829
 # Now you know it's 235 lines, so query accordingly:
-ed -s file.py <<'EDSCRIPT'
+ed -s file.py <<'EDSCRIPT4829'
 H
 225,$n
-EDSCRIPT
+EDSCRIPT4829
 ```
 
 ### Verify Edits with `ed` (Not `read_file`)
@@ -439,22 +439,22 @@ After editing a file with `ed`, always verify using `ed` itself or terminal comm
 **Use `ed` with the `n` command for targeted verification:**
 ```bash
 # Print lines 50-60 with line numbers
-ed -s file.py <<'EDSCRIPT'
+ed -s file.py <<'EDSCRIPT4829'
 H
 50,60n
-EDSCRIPT
+EDSCRIPT4829
 
 # Print from line 225 to end of file
-ed -s file.py <<'EDSCRIPT'
+ed -s file.py <<'EDSCRIPT4829'
 H
 225,$n
-EDSCRIPT
+EDSCRIPT4829
 
 # Print last 10 lines with line numbers
-ed -s file.py <<'EDSCRIPT'
+ed -s file.py <<'EDSCRIPT4829'
 H
 $-9,$n
-EDSCRIPT
+EDSCRIPT4829
 ```
 
 **Why `ed` over shell tools?**
