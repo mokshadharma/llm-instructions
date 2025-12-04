@@ -216,7 +216,8 @@ OUTER_ED
 | `a`           | Append text *after* the current line.                   |
 | `i`           | Insert text *before* the current line.                  |
 | `c`           | Change (replace) the current line(s).                   |
-| `d`           | Delete the current line(s).                             |
+| `d`           | Delete the current line.                                |
+| `START,ENDd`  | Delete lines START through END (inclusive).             |
 | `s/old/new/`  | Substitute text on the current line.                    |
 | `m`           | Move line(s) to after another line.                     |
 | `w`           | Write changes to disk.                                  |
@@ -274,6 +275,45 @@ SCRIPT
 ```
 
 **Key insight:** To reorder lines, you must physically move them using `m` (move), or `d` (delete) combined with `a`/`i` (append/insert). Substitution only changes text within existing lines.
+
+
+## Deleting Contiguous Lines
+
+To delete a block of consecutive lines, use a **range delete** - not individual line deletions.
+
+**Wrong Way (inefficient):**
+```bash
+# Deleting lines 50-55 one at a time (wasteful, error-prone)
+55d
+54d
+53d
+52d
+51d
+50d
+```
+
+**Right Way:**
+```bash
+# Delete lines 50 through 55 in one command
+50,55d
+```
+
+**When to use bottom-up individual deletes vs range delete:**
+- **Range delete (`50,55d`)**: When deleting a *contiguous block* of lines
+- **Bottom-up individual deletes**: When deleting *non-contiguous* lines at different locations (e.g., lines 120, 85, and 12)
+
+**Example: Deleting non-contiguous lines**
+```bash
+ed -s file.py <<'EDSCRIPT'
+H
+# Delete lines 120, 85, and 12 (bottom-up to preserve line numbers)
+120d
+85d
+12d
+w
+q
+EDSCRIPT
+```
 
 ## Safe Range Patterns for Querying
 
