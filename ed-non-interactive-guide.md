@@ -2,6 +2,17 @@
 
 This guide outlines a fail-safe methodology for programmatically editing files using the `ed` line editor. By following these strict procedures, you can eliminate common errors like shifting line numbers and broken syntax.
 
+## Quick Reference (TL;DR)
+
+1. **Locate:** `ed -s FILE <<'EDSCRIPT'` ... `START,ENDn` ... `EDSCRIPT`
+2. **Measure indent:** `awk -v n=LINE 'NR==n {match($0, /^[ \t]*/); print length(substr($0, RSTART, RLENGTH))}' FILE`
+3. **Edit bottom-up:** Start from highest line number, work down
+4. **Script structure:** `H` first, `w` then `q` last
+5. **Anchor edits:** Use `s/pattern/&/` to verify line content before editing
+
+**The `-s` flag:** Always use `ed -s` (silent mode) to suppress the byte count printed when the file is loaded. This keeps output clean and makes error detection easier.
+
+
 
 ## Always Use `ed` for File Editing
 
@@ -52,8 +63,8 @@ awk -v n=LINE 'NR==n {match($0, /^[ \t]*/); print length(substr($0, RSTART, RLEN
 
 **Understanding the Two Measurements:**
 
-1. **Line indentation** (from the first awk command): The number of leading spaces on a specific line
-2. **Indent width** (from the second awk command): The file's indent unit (typically 4 spaces)
+1. **Line indentation** (from the awk command above): The number of leading spaces on a specific line
+2. **Indent width** (from the Example workflow below): The file's indent unit (typically 4 spaces)
 
 **How to use them together:**
 - **Sibling lines** (same nesting level): Use the exact indentation of an existing sibling
@@ -255,6 +266,9 @@ OUTER_ED
 | `m`           | Move line(s) to after another line.                     |
 | `w`           | Write changes to disk.                                  |
 | `q`           | Quit.                                                   |
+| `Q`           | Quit unconditionally (no warning if buffer modified). |
+| `p`           | Print the current line (without line numbers).        |
+| `$=`          | Print the total number of lines in the buffer.        |
 
 ### Command Limitations
 
@@ -280,18 +294,18 @@ Swapping lines requires **delete + insert** or **move**, not substitution. The `
 
 **Solution 1: Use the `m` (move) command**
 ```bash
-ed -s file.md <<'SCRIPT'
+ed -s file.md <<'EDSCRIPT'
 H
 # Move line 11 to after line 9 (effectively swaps lines 10 and 11)
 11m9
 w
 q
-SCRIPT
+EDSCRIPT
 ```
 
 **Solution 2: Delete and reinsert in new order**
 ```bash
-ed -s file.md <<'SCRIPT'
+ed -s file.md <<'EDSCRIPT'
 H
 # First, capture the content you need (or know it beforehand)
 # Delete both lines (bottom-up to preserve line numbers)
@@ -304,7 +318,7 @@ H
 .
 w
 q
-SCRIPT
+EDSCRIPT
 ```
 
 **Key insight:** To reorder lines, you must physically move them using `m` (move), or `d` (delete) combined with `a`/`i` (append/insert). Substitution only changes text within existing lines.
@@ -442,3 +456,31 @@ EDSCRIPT
 ```bash
 wc -l < filename.py
 ```
+
+## Troubleshooting
+
+Common errors and their causes:
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| `?` (no details) | Forgot the `H` command | Always start scripts with `H` to enable verbose errors |
+| `No match` | Pattern not found on target line | Check line number is correct; check regex escaping for `*`, `[`, `.` |
+| `Invalid address` | Line number out of range | Use `$=` to check file length first, or use `$` for end-of-file |
+| `Warning: buffer modified` | Used `q` after modifying without `w` | Use `Q` to quit unconditionally, or add `w` before `q` |
+| `Invalid command suffix` | Wrong syntax in command | Check command format (e.g., `s/old/new/` needs both delimiters) |
+| File unchanged after script | Script failed before `w` command | Check exit code; review verbose error output |
+
+### Special Characters That Need Escaping in Patterns
+
+When using `s/pattern/&/` for assertions or `s/old/new/` for substitutions, these characters have special meaning in `ed` regex and must be escaped with `\`:
+
+| Character | Meaning | Example |
+|-----------|---------|---------|
+| `.` | Matches any single character | `\.` to match literal period |
+| `*` | Zero or more of preceding | `\*` to match literal asterisk |
+| `[` | Start character class | `\[` to match literal bracket |
+| `]` | End character class | `\]` to match literal bracket |
+| `^` | Start of line (or negation in `[]`) | `\^` to match literal caret |
+| `$` | End of line | `\$` to match literal dollar sign |
+| `\` | Escape character | `\\` to match literal backslash |
+
