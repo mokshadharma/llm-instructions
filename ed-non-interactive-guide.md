@@ -155,7 +155,6 @@ Instead of blindly appending to line 83:
     NewItem
 .
 ```
-* **Note:** You must escape special regex characters (like `*`, `[`, `.`) in the pattern. Failure to escape `[` or `.` will cause `ed` to interpret them as regex classes or wildcards, leading to "No match" errors or incorrect edits.
 **Strict Assertion:**
 Assert that line 83 actually contains "Keys" before editing:
 ```bash
@@ -169,6 +168,23 @@ Assert that line 83 actually contains "Keys" before editing:
 ```
 
 This ensures you don't accidentally append to the wrong list if line numbers have shifted. If line 83 does not contain "Keys", the script fails safely.
+
+**Warning: `q` vs `Q` when testing assertions**
+
+When using `s/pattern/&/` to *test* whether a line matches (without intending to write), the substitution modifies the buffer even though the content is unchanged. If you then use `q` (quit), `ed` will refuse to exit and report "Warning: buffer modified" with exit code 1.
+
+**Solutions:**
+- **For verification only:** Use `Q` (uppercase) to quit unconditionally without saving:
+  ```bash
+  ed -s file.py <<'EDSCRIPT'
+  H
+  83s/Keys/&/
+  Q
+  EDSCRIPT
+  ```
+- **For actual edits:** Continue to use `q` after `w` (write) as normal - the warning only occurs when quitting a modified-but-not-written buffer.
+
+**Key insight:** The `s/pattern/&/` command *always* marks the buffer as modified, even when replacing text with itself. This is expected behavior, not an error in your pattern.
 
 ## Robust Editing Patterns
 
