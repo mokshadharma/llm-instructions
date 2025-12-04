@@ -37,7 +37,7 @@ When performing multiple edits on a single file, **always apply changes in rever
 
 **DO NOT write any edit script until you complete both parts of this step.**
 
-When preparing to edit, run these commands together to get line numbers AND indentation:
+When preparing to edit, run these commands together to get line numbers, and indentation for source code or configuration files:
 
 ```bash
 # View lines with numbers to find your target
