@@ -197,6 +197,8 @@ When using `s/pattern/&/` to *test* whether a line matches (without intending to
 
 **Key insight:** The `s/pattern/&/` command *always* marks the buffer as modified, even when replacing text with itself. This is expected behavior, not an error in your pattern.
 
+### 3. After every successful edit, immediately verify before proceeding to additional edits.
+
 ## Robust Editing Patterns
 
 ### Comma Safety
