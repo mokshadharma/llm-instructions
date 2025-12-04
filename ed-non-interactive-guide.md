@@ -62,8 +62,8 @@ awk -v n=LINE 'NR==n {match($0, /^[ \t]*/); print length(substr($0, RSTART, RLEN
 
 **Example workflow:**
 ```bash
-# 1. Find the indent width for the file
-awk '!NF { next } match($0, /^[ \t]*/){ curr = RLENGTH; if (prev_defined && curr > prev) { print curr - prev; exit } prev = curr; prev_defined = 1 }' myfile.py
+# 1. Find the indent width for the file (looks for first def/class and measures body indent)
+awk '/^(def |class )/ { in_func=1; next } in_func && /^[[:space:]]+[^[:space:]]/ { match($0, /^[[:space:]]+/); print RLENGTH; exit }' myfile.py
 # Output: 4
 
 # 2. Find the indentation of line 47 (an existing attribute you want to add a sibling to)
