@@ -50,14 +50,31 @@ EDSCRIPT
 awk -v n=LINE 'NR==n {match($0, /^[ \t]*/); print length(substr($0, RSTART, RLENGTH))}' FILE
 ```
 
-**Record the indentation number before proceeding.** Use exactly that many spaces for sibling lines, or add the file's indent width (typically 4) for child blocks.
+**Understanding the Two Measurements:**
 
-**Detecting Indent Width:**
-To robustly determine the file's indentation width (spaces or tabs) without guessing, run this command:
+1. **Line indentation** (from the first awk command): The number of leading spaces on a specific line
+2. **Indent width** (from the second awk command): The file's indent unit (typically 4 spaces)
 
+**How to use them together:**
+- **Sibling lines** (same nesting level): Use the exact indentation of an existing sibling
+- **Child lines** (one level deeper): Add the indent width to the parent's indentation
+- **Parent lines** (one level shallower): Subtract the indent width
+
+**Example workflow:**
 ```bash
-awk '!NF { next } match($0, /^[ \t]*/){ curr = RLENGTH; if (prev_defined && curr > prev) { print curr - prev; exit } prev = curr; prev_defined = 1 }' filename.py
+# 1. Find the indent width for the file
+awk '!NF { next } match($0, /^[ \t]*/){ curr = RLENGTH; if (prev_defined && curr > prev) { print curr - prev; exit } prev = curr; prev_defined = 1 }' myfile.py
+# Output: 4
+
+# 2. Find the indentation of line 47 (an existing attribute you want to add a sibling to)
+awk -v n=47 'NR==n {match($0, /^[ \t]*/); print length(substr($0, RSTART, RLENGTH))}' myfile.py
+# Output: 8
+
+# Conclusion: New sibling attributes need 8 spaces
+# A child block inside that line would need 8 + 4 = 12 spaces
 ```
+
+**Record the indentation number before proceeding.** Use exactly that many spaces for sibling lines, or add the file's indent width for child blocks.
 
 **Common Failure Mode:**
 ```bash
