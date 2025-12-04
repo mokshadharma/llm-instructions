@@ -190,6 +190,24 @@ If the content you're inserting contains your heredoc delimiter, the script will
 **Why `EDSCRIPT` instead of `EOF`?**
 `EOF` is extremely common in code examples and documentation. Using `EDSCRIPT` as the standard delimiter avoids conflicts when inserting content that contains heredoc examples.
 
+**When your content contains `EDSCRIPT`:**
+If the text you're inserting contains the literal string `EDSCRIPT` (e.g., editing this guide, or inserting code that uses `ed`), use a different delimiter like `OUTER_ED` or `ED_SCRIPT_END`:
+
+```bash
+ed -s file.md <<'OUTER_ED'
+H
+50a
+ed -s example.py <<'EDSCRIPT'
+H
+10,20n
+EDSCRIPT
+
+.
+w
+q
+OUTER_ED
+```
+
 ## Essential Commands Reference
 
 | Command       | Description                                             |
