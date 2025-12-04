@@ -4,7 +4,7 @@ This guide outlines a fail-safe methodology for programmatically editing files u
 
 ## Quick Reference (TL;DR)
 
-1. **Locate:** `ed -s FILE <<'EDSCRIPT4829'` ... `START,ENDn` ... `EDSCRIPT4829`
+1. **Locate:** `ed -s FILE <<'EDSCRIPT####'` ... `START,ENDn` ... `EDSCRIPT####` (always append a random number)
 2. **Measure indent:** `awk -v n=LINE 'NR==n {match($0, /^[ \t]*/); print length(substr($0, RSTART, RLENGTH))}' FILE`
 3. **Edit bottom-up:** Start from highest line number, work down
 4. **Script structure:** `H` first, `w` then `q` last
@@ -100,7 +100,7 @@ Guessing indentation WILL fail. Measuring takes 5 seconds. Fixing failed edits t
 Create a single script using a **Quoted Heredoc** (`<<'EDSCRIPT4829'`).
 
 **Why Quoted Heredoc?**
-Using `'EDSCRIPT'` (with quotes) prevents the shell from expanding variables (`$var`) or interpreting backslashes. This allows you to paste code snippets (including quotes and special characters) directly into the script without the "quoting nightmare" of `printf`.
+Using a quoted delimiter like `'EDSCRIPT4829'` (with quotes) prevents the shell from expanding variables (`$var`) or interpreting backslashes. This allows you to paste code snippets (including quotes and special characters) directly into the script without the "quoting nightmare" of `printf`.
 
 **Scenario:**
 1.  Add a method after line 200.
@@ -191,7 +191,7 @@ When using `s/pattern/&/` to *test* whether a line matches (without intending to
   H
   83s/Keys/&/
   Q
-  EDSCRIPT
+  EDSCRIPT4829
   ```
 - **For actual edits:** Continue to use `q` after `w` (write) as normal - the warning only occurs when quitting a modified-but-not-written buffer.
 
@@ -231,9 +231,9 @@ EDSCRIPT4829
 
 If the content you're inserting contains your heredoc delimiter, the script will terminate prematurely and fail.
 
-**Best Practice: Always append a random number to your delimiter**
+**Required: Always append a random number to your delimiter**
 
-To eliminate any risk of delimiter conflicts, always append a random 4-digit number to `EDSCRIPT`:
+To eliminate any risk of delimiter conflicts, you **must** append a random 4-digit number to `EDSCRIPT` (e.g., `EDSCRIPT4829`):
 
 ```bash
 ed -s file.py <<'EDSCRIPT4829'
