@@ -231,14 +231,25 @@ EDSCRIPT
 
 If the content you're inserting contains your heredoc delimiter, the script will terminate prematurely and fail.
 
-**Why `EDSCRIPT` instead of `EOF`?**
-`EOF` is extremely common in code examples and documentation. Using `EDSCRIPT` as the standard delimiter avoids conflicts when inserting content that contains heredoc examples.
+**Best Practice: Always append a random number to your delimiter**
 
-**When your content contains `EDSCRIPT`:**
-If the text you're inserting contains the literal string `EDSCRIPT` (e.g., editing this guide, or inserting code that uses `ed`), use a different delimiter like `OUTER_ED` or `ED_SCRIPT_END`:
+To eliminate any risk of delimiter conflicts, always append a random 4-digit number to `EDSCRIPT`:
 
 ```bash
-ed -s file.md <<'OUTER_ED'
+ed -s file.py <<'EDSCRIPT4829'
+H
+50,60n
+EDSCRIPT4829
+```
+
+This guarantees uniqueness even when editing files that contain `EDSCRIPT` (like this guide itself, or code that uses `ed`). Pick any random number for each editing session.
+
+**Why `EDSCRIPT` as the base instead of `EOF`?**
+`EOF` is extremely common in code examples and documentation. Using `EDSCRIPT` as the base makes the delimiter's purpose clear and further reduces collision risk.
+
+**Example: Editing a file that contains heredoc examples**
+```bash
+ed -s file.md <<'EDSCRIPT7391'
 H
 50a
 ed -s example.py <<'EDSCRIPT'
@@ -249,7 +260,7 @@ EDSCRIPT
 .
 w
 q
-OUTER_ED
+EDSCRIPT7391
 ```
 
 ## Essential Commands Reference
