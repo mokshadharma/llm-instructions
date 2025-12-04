@@ -35,7 +35,7 @@ When performing multiple edits on a single file, **always apply changes in rever
 
 ### 1. Locate AND Measure (REQUIRED BEFORE EDITING)
 
-**DO NOT write any edit script until you complete both parts of this step.**
+IMPORTANT: DO NOT write any edit script until you complete BOTH parts of this step.
 
 When preparing to edit, run these commands together to get line numbers, and indentation for source code or configuration files:
 
