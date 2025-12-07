@@ -38,6 +38,22 @@ Proving a negative is often the fastest way to eliminate entire categories of hy
 Trust the library until you have verified that the system (OS/Kernel) is delivering the raw materials correctly.
 ** 8. The "Trap" Technique
 When logs are ambiguous, create a "trap." Writing small, aggressive diagnostic traps is often more effective than passive logging.
+** 9. Trace the Lifecycle, Not the Error Location
+Don't focus on where the error is reported. Instead, find where the problematic value is *created*, *assigned*, and *used*. The root cause is usually upstream of where symptoms appear.
+*** Action: Search for all assignment sites, not just the line the error mentions.
+*** Goal: Understand the full journey of the data or object before deciding where to intervene.
+** 10. Map All Possibilities Before Fixing
+Before adding any fix, enumerate every value or state the problematic element can hold across all code paths. Write them down explicitly.
+*** Principle: The correct fix often emerges naturally once you see the complete picture.
+*** Anti-pattern: Fixing individual error locations without understanding the whole system leads to whack-a-mole debugging.
+** 11. Fix at the Source, Not the Symptom
+When multiple errors share a common cause, resist fixing each error individually. Look for the single upstream change that resolves all of them.
+*** Principle: One declaration or structural fix beats N scattered guards or assertions.
+*** Action: When you see errors on lines 50, 75, and 120, ask "What single change would make all three disappear?" rather than "How do I fix line 50?"
+** 12. Look for Missing Declarations, Not Missing Guards
+When a type checker or validator complains, the first question should be "Is this properly declared?" not "How do I guard this usage?"
+*** Principle: Guards and assertions are downstream fixes; declarations and contracts are upstream fixes. Prefer upstream.
+*** Action: Before adding runtime checks, verify that the data structure, type, or schema is correctly specified at its point of definition.
 ** prompts
 *** explain why these errors are happening and suggest some options for solutions, listing their pros and cons.  don't write any code yet.  just analyze and suggest.  be sure to base your suggested options on a thorough analysis.  don't guess what's in the code, actually check before making any suggestions, so the suggestions themselves should include only certainties about what the code actually already does and suggestions for how to fix the errors based on the thorough and definitive analysis.  if you need me to add any files to analyze further just ask before doing anything else.  but don't write any code.  this is just an analysis and suggestion phase.  do not write any code, even after new files are added
 *** i'd like to try instrumenting with manhole, which provides an in-process service that acts as a secure debugging back-door, allowing an external client to connect to a live, running Python application—typically via a Unix Domain Socket—and drop into an interactive REPL (Read-Eval-Print Loop). This powerful introspection capability is essential for debugging long-running processes by letting a developer examine the state of global variables, inspect object attributes, and dump stack traces for all active threads without stopping or restarting the program. To instrument a program, you simply install the service early in your application's bootstrap code using import manhole; manhole.install(), and optionally pass a locals dictionary to explicitly expose key application objects for easy access. To use it, you find the process's ID (PID), which is part of the socket path (e.g., /tmp/manhole-<PID>), and then connect to that socket using the included manhole-cli tool or a general networking tool like socat (e.g., socat readline unix-connect:/tmp/manhole-<PID>), which connects you directly to the live Python console.
