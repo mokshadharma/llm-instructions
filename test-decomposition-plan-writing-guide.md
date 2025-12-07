@@ -1,6 +1,6 @@
 ---
 goal: Guide for Writing Test Decomposition Plans
-version: 1.3
+version: 1.3.1
 date_created: 2025-12-07
 last_updated: 2025-12-07
 owner: Development Team
@@ -61,7 +61,7 @@ This document provides guidance for writing implementation plans that decompose 
 | TASK-1300 | Describe what belongs in the context-and-fixtures module (context class, fixtures, helpers)                    |           |      |
 | TASK-1400 | Describe what remains in the thin entrypoint after decomposition                                               |           |      |
 | TASK-1500 | Map each logical section from the monolith to its target module                                                |           |      |
-| TASK-1600 | Include expected step counts per target module (for validation that nothing was lost during migration) |           |      |
+| TASK-1600 | Include expected step counts per target module (based on mapping from TASK-1500, accounting for duplicates identified in TASK-0900) (for validation that nothing was lost during migration) |           |      |
 | TASK-1700 | Specify the context class attributes based on state-sharing analysis from TASK-0800 (what data steps need to share) |           |      |
 | TASK-1800 | Specify the context class methods (typically at minimum a `reset()` method) |           |      |
 
@@ -106,7 +106,7 @@ This document provides guidance for writing implementation plans that decompose 
 | TASK-3700 | Identify any contradictions between plan elements (e.g., task dependencies that conflict)        |           |      |
 | TASK-3800 | For each documented risk, verify the migration sequence includes mitigation steps                |           |      |
 | TASK-3900 | Identify decisions that require user input and document questions to ask                         |           |      |
-| TASK-4000 | If issues are found, return to Phases 2-4 to revise; repeat Phase 5 until the plan is stable     |           |      |
+| TASK-4000 | If issues are found, return to Phases 2-4 to revise (including documenting any newly discovered risks); repeat Phase 5 until the plan is stable     |           |      |
 
 ### Phase 6: Define Verification Criteria in the Plan
 
