@@ -1,6 +1,6 @@
 ---
 goal: Guide for Writing Test Decomposition Plans
-version: 1.4.0
+version: 1.5.0
 date_created: 2025-12-07
 last_updated: 2025-12-07
 owner: Development Team
@@ -33,6 +33,7 @@ This document provides guidance for writing implementation plans that decompose 
 
 - **GUD-600**: Task descriptions must describe exactly one action to perform. Never include negations like "DO NOT DO THIS YET" or conditional clauses that contradict the main action. If a task is preparation for future work, describe what IS to be done now.
 - **GUD-700**: Plans must not reference line numbers for code that will be modified, moved, or deleted. Identify code by unique characteristics (class name, function name, decorator string). Line numbers are valid only for initial analysis where the file is read-only.
+- **GUD-800**: Tasks within each phase must be ordered by dependency. If task B requires task A's output (e.g., files must exist before they can be registered), task A must precede task B. Review each phase's task sequence for dependency violations.
 
 ## 2. Implementation Steps
 
@@ -112,6 +113,7 @@ This document provides guidance for writing implementation plans that decompose 
 | TASK-4000 | If issues are found, return to Phases 2-4 to revise (including documenting any newly discovered risks); repeat Phase 5 until the plan is stable     |           |      |
 | TASK-4050 | Verify step counts by running an automated count against the source file; do not rely on manual estimates. Include the verification command and its output in the plan. |           |      |
 | TASK-4060 | Verify all cross-references in phase reminders (IMPORTANT blocks) point to correct section/item numbers. Search for each referenced identifier and confirm it exists with the stated description. |           |      |
+| TASK-4070 | Verify that all tasks within each phase are correctly ordered by dependency (no task references outputs that haven't been created yet) |           |      |
 
 ### Phase 6: Define Verification Criteria in the Plan
 
