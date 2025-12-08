@@ -1,6 +1,6 @@
 ---
 goal: Guide for Writing Test Decomposition Plans
-version: 1.3.1
+version: 1.4.0
 date_created: 2025-12-07
 last_updated: 2025-12-07
 owner: Development Team
@@ -30,6 +30,9 @@ This document provides guidance for writing implementation plans that decompose 
 - **GUD-300**: Include measurable completion criteria for each phase
 - **GUD-400**: (In output plans) Include a reminder after each phase heading to review Constraints, Risks, and Specification sections (such as Context Class Specification) before implementation
 - **GUD-500**: (In output plans) Use blockquote format for phase review reminders: `> **IMPORTANT:** Before implementing this phase, review Section N (Name), Section M (Name)... for applicable items.`
+
+- **GUD-600**: Task descriptions must describe exactly one action to perform. Never include negations like "DO NOT DO THIS YET" or conditional clauses that contradict the main action. If a task is preparation for future work, describe what IS to be done now.
+- **GUD-700**: Plans must not reference line numbers for code that will be modified, moved, or deleted. Identify code by unique characteristics (class name, function name, decorator string). Line numbers are valid only for initial analysis where the file is read-only.
 
 ## 2. Implementation Steps
 
@@ -71,7 +74,7 @@ This document provides guidance for writing implementation plans that decompose 
 
 | Task      | Description                                                                                                    | Completed | Date |
 | --------- | -------------------------------------------------------------------------------------------------------------- | --------- | ---- |
-| TASK-1900 | Specify that infrastructure (package, harness module) must be created before step migrations                   |           |      |
+| TASK-1900 | Specify that infrastructure must be created before step migrations: (1) create the package directory if needed, (2) create empty module files with basic structure (docstring, imports), (3) register modules in the discovery mechanism. Module files must exist before registration.                   |           |      |
 | TASK-2000 | Specify how fixtures and helpers should be extracted before the steps that depend on them                      |           |      |
 | TASK-2100 | Specify that plans must include a baseline extraction step before migration to enable exact pattern comparison afterward |           |      |
 | TASK-2200 | Specify the order in which step definition groups should be migrated (typically starting from sections at the bottom of the file and working upward) |           |      |
@@ -107,6 +110,8 @@ This document provides guidance for writing implementation plans that decompose 
 | TASK-3800 | For each documented risk, verify the migration sequence includes mitigation steps                |           |      |
 | TASK-3900 | Identify decisions that require user input and document questions to ask                         |           |      |
 | TASK-4000 | If issues are found, return to Phases 2-4 to revise (including documenting any newly discovered risks); repeat Phase 5 until the plan is stable     |           |      |
+| TASK-4050 | Verify step counts by running an automated count against the source file; do not rely on manual estimates. Include the verification command and its output in the plan. |           |      |
+| TASK-4060 | Verify all cross-references in phase reminders (IMPORTANT blocks) point to correct section/item numbers. Search for each referenced identifier and confirm it exists with the stated description. |           |      |
 
 ### Phase 6: Define Verification Criteria in the Plan
 
@@ -171,6 +176,9 @@ This document provides guidance for writing implementation plans that decompose 
 - **RISK-700**: Duplicate step definitions may exist in the monolith (same decorator string, multiple implementations) - only the last-registered implementation runs, and during migration these must be consolidated into single implementations
 - **RISK-800**: Steps may share state via function attributes or other non-obvious mechanisms, forcing batch migration instead of incremental migration
 - **RISK-900**: Type or interface inconsistencies across steps (e.g., some steps using object attributes, others using dictionary keys for the same data) may require standardization during migration
+- **RISK-1000**: Step counts may be estimated rather than verified, leading to incorrect expectations during migration. Mitigation: Always derive counts from automated tooling (e.g., `rg -c '@(given|when|then)\('`), not from manual inspection.
+- **RISK-1100**: Line number references become stale after file modifications. Mitigation: Identify code by content (class/function names, unique strings) rather than line numbers, except in baseline/analysis phases where the file is read-only.
+- **RISK-1200**: Cross-references in phase reminders may point to wrong section/item numbers if numbering changes during drafting. Mitigation: Verify all cross-references during Phase 5 review.
 
 - **ASSUMPTION-100**: The person writing the plan has access to the codebase and can perform the necessary analysis
 - **ASSUMPTION-200**: The established decomposition pattern is documented or can be inferred from existing examples
