@@ -1,6 +1,6 @@
 ---
 goal: Guide for Writing Test Decomposition Plans
-version: 1.5.0
+version: 1.6.0
 date_created: 2025-12-07
 last_updated: 2025-12-07
 owner: Development Team
@@ -52,6 +52,7 @@ This document provides guidance for writing implementation plans that decompose 
 | TASK-0700 | Analyze how pytest-bdd step definitions are registered/discovered in this codebase (e.g., via conftest.py pytest_plugins, direct imports, or other mechanisms) and document any registration steps required for new modules |           |      |
 | TASK-0800 | Analyze how steps share state (function attributes, globals, fixtures, context objects) and document whether incremental or batch migration is feasible |           |      |
 | TASK-0900 | Scan for duplicate step definitions (same decorator string, multiple implementations) and count unique vs total decorators |           |      |
+| TASK-0950 | Scan for step definition collisions with OTHER test packages (not just within the monolith). When modules will be registered globally via `pytest_plugins`, their step decorator strings must be unique across ALL registered modules. Run: `rg '@(given|when|then)\("' tests/bdd/step_defs/ \| sed 's/.*@//' \| sort \| uniq -d` to find duplicates. |           |      |
 | TASK-1000 | Identify type or interface inconsistencies across steps that will need standardization (e.g., mixed object attribute vs dictionary access patterns) |           |      |
 
 ### Phase 2: Define the Target Structure in the Plan
@@ -81,6 +82,7 @@ This document provides guidance for writing implementation plans that decompose 
 | TASK-2200 | Specify the order in which step definition groups should be migrated (typically starting from sections at the bottom of the file and working upward) |           |      |
 | TASK-2300 | Specify that step decorator strings must be copied verbatim from the original file - no paraphrasing, regeneration, or modification allowed |           |      |
 | TASK-2400 | If duplicate step definitions were identified (TASK-0900), specify that they must be consolidated into single implementations during migration |           |      |
+| TASK-2450 | If cross-module step collisions were identified (TASK-0950), specify that colliding step text must be made unique (typically by adding domain-specific qualifiers, e.g., "appropriate error messages" becomes "appropriate pool exhaustion error messages"). Document which feature files need corresponding updates. |           |      |
 | TASK-2500 | If type/interface inconsistencies were identified (TASK-1000), specify the standardization approach (e.g., all results use dictionary format) |           |      |
 | TASK-2600 | If state-sharing analysis (TASK-0800) determined batch migration is required, document this decision with rationale |           |      |
 | TASK-2700 | Specify that each migration should be verified before proceeding to the next                                   |           |      |
@@ -126,6 +128,7 @@ This document provides guidance for writing implementation plans that decompose 
 | TASK-4300 | Specify that all scenarios must bind to exactly one step definition each                         |           |      |
 | TASK-4400 | Specify that test pass/fail status must match the pre-decomposition baseline                     |           |      |
 | TASK-4500 | Specify linting and import verification requirements                                             |           |      |
+| TASK-4550 | Specify that the FULL test suite must pass (not just the tests for the decomposed module). Include the verification command (e.g., `make test` or `pytest tests/`). |           |      |
 | TASK-4600 | Specify that plans must include concrete verification commands (not just criteria) that can be copy-pasted and executed |           |      |
 
 ### Phase 7: Format and Finalize the Plan Document
@@ -181,6 +184,7 @@ This document provides guidance for writing implementation plans that decompose 
 - **RISK-1000**: Step counts may be estimated rather than verified, leading to incorrect expectations during migration. Mitigation: Always derive counts from automated tooling (e.g., `rg -c '@(given|when|then)\('`), not from manual inspection.
 - **RISK-1100**: Line number references become stale after file modifications. Mitigation: Identify code by content (class/function names, unique strings) rather than line numbers, except in baseline/analysis phases where the file is read-only.
 - **RISK-1200**: Cross-references in phase reminders may point to wrong section/item numbers if numbering changes during drafting. Mitigation: Verify all cross-references during Phase 5 review.
+- **RISK-1300**: Step decorator strings that are unique within the monolith may collide with steps in OTHER test packages when the new modules are registered globally via `pytest_plugins`. This causes pytest-bdd to use the wrong step implementation based on registration order. Mitigation: Scan all registered modules for duplicate step text before migration; make colliding steps unique by adding domain qualifiers.
 
 - **ASSUMPTION-100**: The person writing the plan has access to the codebase and can perform the necessary analysis
 - **ASSUMPTION-200**: The established decomposition pattern is documented or can be inferred from existing examples
