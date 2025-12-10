@@ -1,0 +1,14 @@
+The function is too long and complex, handling multiple distinct tasks within a single body.
+
+Your task is to refactor it. Decompose the function into several smaller, clear, single-purpose helper functions. The original function should then be rewritten to orchestrate calls to these new helpers.
+
+Prioritize the following principles for the refactored code:
+1.  **Clarity:** The new functions should be well-named and easy to understand.
+2.  **Single Responsibility:** Each new function should be responsible for one logical operation.
+3.  **Testability:** The new, smaller functions should be granular enough to be easily unit-tested in isolation.
+4.  **Robustness:** The logic should be safe and handle potential errors gracefully.
+
+**Important Constraints:**
+*   You must only refactor the specified function and the new helper functions you create.
+*   Do not change the external behavior or public signature of the original function.
+*   Do not improve, comment, fix, or modify any other unrelated parts of the file. Your changes should be strictly limited to the decomposition of the target function.
