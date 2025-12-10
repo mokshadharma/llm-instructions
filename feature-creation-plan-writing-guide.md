@@ -425,9 +425,3 @@ Example question format:
 This section is populated during Phase 2 (Planning Discussion). Each decision references the question that prompted it.
 
 (Decisions will be added here as DEC-NNNN entries during the planning discussion phase.)
-
-## 11. Related Specifications / Further Reading
-
-- Test Decomposition Plan Writing Guide (for test-specific planning)
-- Project coding standards and conventions
-- Existing implementation plans as examples
