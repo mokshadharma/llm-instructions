@@ -393,31 +393,40 @@ When planning features that fix bugs or modify existing behavior:
 
 When conducting the planning discussion (Phase 2), follow this protocol:
 
-1. **Present one question at a time** - Do not overwhelm with multiple questions
-2. **Wait for response before proceeding** - Each answer may affect subsequent questions
-3. **Number questions sequentially** - Q1, Q2, Q3... for later reference in decisions
-4. **Explain trade-offs** - For each question, describe the pros, cons, and implications of each option
-5. **Make a recommendation** - State which option you recommend and why
-6. **Document immediately** - Create the DEC-NNNN entry as soon as the user decides
-7. **Identify follow-up questions** - Answers often raise new questions; add them to the queue
+1. **Number questions sequentially** - Use Q1, Q2, Q3... in a monotonically increasing sequence so each question can be unambiguously referred to from anywhere in the conversation
+2. **Present one question at a time** - Only ask one choice at a time and wait for the user's reply before moving on to the next question
+3. **Explain the issue first** - Before presenting options, explain the issue and why it is a problem
+4. **Compare options thoroughly** - For each option, describe pros, cons, ripple effects, and potential unintended consequences compared to the other options
+5. **Make a recommendation** - State which option you recommend and explain why
+6. **Ask the user to choose** - After presenting the analysis and recommendation, ask the user to decide
+7. **Document immediately** - Create the DEC-NNNN entry as soon as the user decides
+8. **Identify follow-up questions** - Answers often raise new questions; add them to the queue
 
 Example question format:
 
 ```
 **Q5:** Should the CLI command support reading from stdin?
 
+**The Issue:** Currently the command only accepts a filename argument. This means users cannot pipe output from other commands directly into the tool, which limits scripting flexibility and deviates from Unix conventions.
+
 **Option A: Yes, support stdin**
-- Pro: Enables piping and scripting
-- Pro: Follows Unix conventions
-- Con: Complicates implementation
-- Con: May conflict with interactive prompts
+- Pro: Enables piping and scripting workflows
+- Pro: Follows Unix conventions that users expect
+- Con: Complicates implementation (must detect stdin vs file)
+- Con: May conflict with interactive prompts if stdin is used for both
+- Ripple effect: Error messages must distinguish "no input" from "empty file"
+- Unintended consequence: Users may accidentally hang the command waiting for stdin
 
 **Option B: No, require explicit filename**
 - Pro: Simpler implementation
-- Pro: Clearer error messages
-- Con: Less flexible for advanced users
+- Pro: Clearer error messages ("file not found" vs ambiguous stdin states)
+- Con: Less flexible for advanced users who expect Unix-style piping
+- Ripple effect: None significant
+- Unintended consequence: May frustrate users familiar with Unix pipelines
 
-**Recommendation:** Option A, because Unix conventions are important for CLI tools and the additional complexity is manageable.
+**Recommendation:** Option A, because Unix conventions are important for CLI tools and the additional complexity is manageable. The stdin detection pattern is well-established and the interactive prompt conflict can be resolved by requiring `--interactive` flag.
+
+Which option do you prefer?
 ```
 
 ## 10. Decisions
