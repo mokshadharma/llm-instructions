@@ -9,6 +9,7 @@ This guide outlines a fail-safe methodology for programmatically editing files u
 3. **Edit bottom-up:** Start from highest line number, work down
 4. **Script structure:** `H` first, `w` then `q` last
 5. **Anchor edits:** Use `s/pattern/&/` to verify line content before editing
+6. **Multi-line indent:** Use `I() { printf '%s%*s' "$base" $(($1*unit)) ''; }` with `$(I N)` for programmatic indentation
 
 **The `-s` flag:** Always use `ed -s` (silent mode) to suppress the byte count printed when the file is loaded. This keeps output clean and makes error detection easier.
 
@@ -44,7 +45,7 @@ When performing multiple edits on a single file, **always apply changes in rever
 
 ## The Robust Workflow
 
-### 1. Locate AND Measure (REQUIRED BEFORE EDITING)
+### 1. Locate AND Measure (REQUIRED BEFORE AND AFTER EDITING)
 
 IMPORTANT: DO NOT write any edit script until you complete BOTH parts of this step.
 
@@ -96,6 +97,52 @@ awk -v n=47 'NR==n {match($0, /^[ \t]*/); print length(substr($0, RSTART, RLENGT
 
 Guessing indentation WILL fail. Measuring takes 5 seconds. Fixing failed edits takes minutes.
 
+### Programmatic Indentation for Insertions
+
+When inserting multiple lines with varying indentation levels, **do not type leading whitespace literally**. Instead, generate it programmatically to ensure correctness.
+
+**Setup: Extract base indent and compute indent function**
+```bash
+# Extract base indent from a sibling line (e.g., line 829)
+base=$(sed -n '829s/^\([[:space:]]*\).*/\1/p' FILE)
+
+# Detect indent unit from file (typically 4 spaces for Python)
+unit=$(awk '/^[[:space:]]+[^[:space:]]/{match($0,/^[[:space:]]+/);if(p&&RLENGTH>p){print RLENGTH-p;exit}p=RLENGTH}' FILE)
+unit=${unit:-4}
+
+# Function: I N = base indent + N additional indent units
+I() { printf '%s%*s' "$base" $(($1*unit)) ''; }
+```
+
+**Usage in ed heredoc:**
+```bash
+ed -s FILE <<EOF
+830a
+$(I 0)# Comment at base indent level
+$(I 0)try:
+$(I 1)import litellm
+$(I 1)litellm.callbacks = []
+$(I 0)except ImportError:
+$(I 1)pass
+.
+w
+q
+EOF
+```
+
+**Key points:**
+- `$(I 0)` = base indent (same level as sibling line)
+- `$(I 1)` = base + 1 indent unit (one level deeper)
+- `$(I 2)` = base + 2 indent units (two levels deeper)
+- The heredoc uses unquoted `<<EOF` to allow `$(I N)` expansion
+- No literal leading whitespace is typed - all indentation comes from the `I` function
+
+**Why this works:**
+- `$base` is extracted directly from the file - guaranteed correct
+- `$unit` is detected from the file or defaults to 4
+- `printf '%*s'` generates exactly the specified number of spaces
+- Shell expansion happens before `ed` sees the content
+
 ### 2. Script: Construct the Atomic Edit
 Create a single script using a **Quoted Heredoc** (`<<'EDSCRIPT4829'`).
 
@@ -127,17 +174,33 @@ q
 EDSCRIPT4829
 ```
 ### 3. Verify: Check Your Work
-After running the script, verify the changes immediately using the same tools used in step 1.,
+After running the script, **verify the changes immediately**, including indentation.
 
+**CRITICAL: Always verify indentation after edits.** Use the same measurement command from Step 1:
 ```bash
-# Check the import
-head -n 5 filename.py
+# Verify indentation of the newly inserted line (replace LINE with actual line number)
+awk -v n=LINE 'NR==n {match($0, /^[ \t]*/); print length(substr($0, RSTART, RLENGTH))}' FILE
 
-# Check the list item
-echo '80,90n' | ed -s filename.py
+# View the edited region with line numbers
+ed -s FILE <<'EDSCRIPT####'
+H
+START,ENDn
+EDSCRIPT####
 ```
 
-## Critical Safeguards (Required)
+**Why measure after?**
+- Confirms the edit applied the correct indentation
+- Catches whitespace issues before they cause runtime errors
+- The before/after measurements should match your expectations
+
+**Example verification workflow:**
+```bash
+# Before edit: measured line 829 has 8 spaces
+# After edit: verify new line 830 also has 8 spaces
+awk -v n=830 'NR==n {match($0, /^[ \t]*/); print length(substr($0, RSTART, RLENGTH))}' myfile.py
+# Output should be: 8
+```
+
 
 ### 1. Verbose Error Messages (`H`)
 By default, `ed` only prints `?` on error. You **must** enable verbose error messages to debug failures effectively.
