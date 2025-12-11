@@ -54,3 +54,31 @@ When multiple errors share a common cause, resist fixing each error individually
 When a type checker or validator complains, the first question should be "Is this properly declared?" not "How do I guard this usage?"
 *** Principle: Guards and assertions are downstream fixes; declarations and contracts are upstream fixes. Prefer upstream.
 *** Action: Before adding runtime checks, verify that the data structure, type, or schema is correctly specified at its point of definition.
+** 13. Verify Units, Scales, and Formats at Boundaries
+When data crosses component boundaries, verify that producer and consumer agree on units, scales, and formats.
+*** Principle: Many bugs are "impedance mismatches" - one component produces data in one format while another expects a different format. Examples: probabilities vs logits, UTC vs local time, 0-indexed vs 1-indexed, bytes vs strings.
+*** Action: At integration points, explicitly document and verify the expected format on both sides.
+** 14. When Filters Return Empty, Inspect the Rejection
+If any filtering operation (threshold, query, predicate) returns zero results when you expect many, the data usually exists but fails the filter criteria.
+*** Principle: "No results" from a filter rarely means "no data" - it usually means "data exists but doesn't match."
+*** Action: Before investigating data sources, print the filter criteria alongside sample values being filtered to see why they're rejected.
+** 15. Trace the Full Pipeline in One Pass
+Before adding diagnostics incrementally, map out the complete data flow and instrument every stage simultaneously.
+*** Principle: Incremental debugging (add one print, run, add another, run) wastes cycles. A single test run with visibility into all stages reveals the failing boundary immediately.
+*** Action: Identify all transformation stages, add logging at each boundary in one edit, then run once and analyze the full trace.
+** 16. Binary Search the Pipeline
+When data flows through N stages and output is wrong, don't debug linearly from stage 1. Start at the middle stage.
+*** Principle: If the middle stage shows correct data, the bug is downstream. If wrong, it's upstream. This finds the failing stage in log(N) steps instead of N.
+*** Action: For a 6-stage pipeline, check stage 3 first, then narrow to either 1-3 or 4-6, then pinpoint.
+** 17. Identify What Changed Between Working and Failing
+When something worked before but fails now (or works in one environment but fails in another), explicitly list the differences.
+*** Principle: The bug is almost always in the delta. Comparing "mock vs real," "dev vs prod," or "before vs after" focuses attention on the actual change.
+*** Action: Write down: "What is different?" Then verify each difference until you find the one that matters.
+** 18. Read the Integration Code Before Adding Diagnostics
+Before instrumenting code with debug statements, read the source of the components involved - especially at integration points.
+*** Principle: Five minutes reading often reveals assumptions, edge cases, or transformations that explain the bug without any debugging.
+*** Action: When component A calls component B and the result is wrong, read B's implementation first. Check what it actually returns, not what you assume it returns.
+** 19. Write Down and Verify Assumptions Explicitly
+When debugging, you hold implicit assumptions about data formats, value ranges, and component behavior. These assumptions are often wrong.
+*** Principle: Unexamined assumptions are the primary source of wasted debugging time. Making them explicit forces verification.
+*** Action: Before deep-diving, list your assumptions as checkboxes. Verify each one with evidence before proceeding.
