@@ -202,6 +202,19 @@ awk -v n=830 'NR==n {match($0, /^[ \t]*/); print length(substr($0, RSTART, RLENG
 ```
 
 
+**Verify syntax immediately after every edit.** Before making additional changes, run the language's syntax checker:
+```bash
+# Python
+python3 -m py_compile FILE && echo "Syntax OK"
+
+# JavaScript/TypeScript
+node --check FILE
+
+# JSON
+python3 -m json.tool FILE > /dev/null && echo "Valid JSON"
+```
+This catches errors early when they're easiest to fix, before additional edits create cascading problems.
+
 ### 1. Verbose Error Messages (`H`)
 By default, `ed` only prints `?` on error. You **must** enable verbose error messages to debug failures effectively.
 *   **The Fix:** Always start your script with the `H` command.
@@ -355,6 +368,11 @@ EDSCRIPT7391
 - Insert new lines
 
 For structural changes (reordering, moving, deleting), use `d`, `m`, `a`, or `i`.
+
+**`c` (change) completely replaces lines.** When using `START,ENDc`, the entire range is deleted and replaced with your new content. Before using `c` on a range:
+1. Print the exact lines first (`START,ENDn`)
+2. Identify any syntax-significant characters (`)`, `]`, `}`, `:`) that must be preserved
+3. Include those characters in your replacement - nothing is kept unless you explicitly include it
 
 ## Swapping or Reordering Lines
 
@@ -559,4 +577,18 @@ When using `s/pattern/&/` for assertions or `s/old/new/` for substitutions, thes
 | `^` | Start of line (or negation in `[]`) | `\^` to match literal caret |
 | `$` | End of line | `\$` to match literal dollar sign |
 | `\` | Escape character | `\\` to match literal backslash |
+
+### Recovering from Failed Edits
+
+When an edit produces invalid syntax or incorrect results:
+
+1. **First, try to fix it with a targeted correction.** Use `ed` to make a specific fix to the problem area.
+
+2. **If stuck after multiple failed attempts**, suggest to the user that reverting the file and starting fresh may be the best path forward:
+   ```bash
+   git checkout FILE
+   ```
+   Then redo the edit correctly from the beginning.
+
+**Key insight:** Patching a broken edit with more edits can work, but if you find yourself making multiple correction attempts without success, a clean revert is faster than continuing to debug cascading errors.
 
