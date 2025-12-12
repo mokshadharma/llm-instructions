@@ -500,8 +500,8 @@ Update the `default` target to show the new commands:
 
 | Task | Description | Completed | Date |
 |------|-------------|-----------|------|
-| TASK-2700 | Add `doc/html/` to `<project-root>/.gitignore` : `touch .gitignore && echo 'doc/html/' >> .gitignore` | | |
-| TASK-2800 | Verify gitignore entry is correct by running `git status` after a build | | |
+| TASK-2900 | Add `doc/html/` to `<project-root>/.gitignore` : `touch .gitignore && echo 'doc/html/' >> .gitignore` | | |
+| TASK-3000 | Verify gitignore entry is correct by running `git status` after a build | | |
 
 #### Gitignore Entries
 
@@ -528,15 +528,15 @@ doc/html/
 
 | Task | Description | Completed | Date |
 |------|-------------|-----------|------|
-| TASK-2900 | Run `make docs` from project root | | |
-| TASK-3000 | Verify HTML output exists at `doc/html/index.html` | | |
-| TASK-3100 | Run `make docs-serve` and open `http://127.0.0.1:8000/` in a browser | | |
-| TASK-3200 | Verify the home page displays correctly with navigation | | |
-| TASK-3300 | Navigate to API Reference and verify docstrings are rendered | | |
-| TASK-3400 | Verify search functionality works (type a function or class name) | | |
-| TASK-3500 | Stop the server (Ctrl+C) and run `make docs-clean` | | |
-| TASK-3600 | Verify `doc/html/` contents are removed | | |
-| TASK-3700 | Run `git status` and verify `doc/html/` is not shown as untracked | | |
+| TASK-3100 | Run `make docs` from project root | | |
+| TASK-3200 | Verify HTML output exists at `doc/html/index.html` | | |
+| TASK-3300 | Run `make docs-serve` and open `http://127.0.0.1:8000/` in a browser | | |
+| TASK-3400 | Verify the home page displays correctly with navigation | | |
+| TASK-3500 | Navigate to API Reference and verify docstrings are rendered | | |
+| TASK-3600 | Verify search functionality works (type a function or class name) | | |
+| TASK-3700 | Stop the server (Ctrl+C) and run `make docs-clean` | | |
+| TASK-3800 | Verify `doc/html/` contents are removed | | |
+| TASK-3900 | Run `git status` and verify `doc/html/` is not shown as untracked | | |
 
 #### Phase 7 Results
 
