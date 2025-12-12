@@ -70,14 +70,20 @@ Before starting implementation, verify these prerequisites:
 
 | Task | Description | Completed | Date |
 |------|-------------|-----------|------|
-| TASK-0100 | Open `<project-root>/pyproject.toml` and locate or create the `[dependency-groups]` section | | |
-| TASK-0200 | Add a `docs` dependency group containing: `mkdocs>=1.6`, `mkdocs-material>=9.5`, `mkdocstrings[python]>=0.27` | | |
-| TASK-0300 | Run `uv sync --group docs` to install the documentation dependencies | | |
+| TASK-0100 | Run `uv add --group docs mkdocs mkdocs-material "mkdocstrings[python]"` to add documentation dependencies | | |
+| TASK-0200 | Verify the `docs` group was added to `pyproject.toml` in the `[dependency-groups]` section | | |
+| TASK-0300 | (Optional) If dependencies weren't installed automatically, run `uv sync --group docs` | | |
 | TASK-0400 | Verify installation by running `uv run mkdocs --version` | | |
 
 #### Dependency Group Configuration
 
-Add the following to `pyproject.toml`:
+Run this command to add the documentation dependencies:
+
+```bash
+uv add --group docs mkdocs mkdocs-material "mkdocstrings[python]"
+```
+
+This will add the following to `pyproject.toml`:
 
 ```toml
 [dependency-groups]
@@ -87,6 +93,8 @@ docs = [
     "mkdocstrings[python]>=0.27",
 ]
 ```
+
+**Note:** Always use `uv add` to modify `pyproject.toml` dependencies rather than editing the file manually. This ensures the lockfile stays in sync and dependencies are properly resolved.
 
 #### Phase 1 Results
 
