@@ -56,6 +56,7 @@ Before starting implementation, verify these prerequisites:
 
 - [ ] `uv` is installed: `uv --version`
 - [ ] Project has `pyproject.toml`: `ls pyproject.toml`
+- [ ] Project dependencies are synced: `uv sync`
 - [ ] Python package exists and is importable: `uv run python -c 'import <package-name>'`
 - [ ] GNU Make is available: `make --version`
 - [ ] Git repository is initialized: `git status`
@@ -106,6 +107,8 @@ docs = [
 | TASK-0500 | Create directory `<project-root>/doc/source/` | | |
 | TASK-0600 | Create directory `<project-root>/doc/html/` (will hold generated output; remains empty until build) | | |
 | TASK-0700 | Verify structure exists: `doc/`, `doc/source/`, `doc/html/` | | |
+
+> **Note:** The `doc/html/` directory will be added to `.gitignore` in Phase 6. Avoid running `git add .` or committing until Phase 6 is complete, or add `doc/html/` to `.gitignore` now if you prefer.
 
 #### Phase 2 Results
 
