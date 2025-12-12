@@ -367,21 +367,78 @@ The following pages are commonly useful but not required for the initial setup. 
 
 - **GOAL-500**: Add documentation build targets to the project Makefile
 
+**Choose ONE of the following paths based on whether your project already has a Makefile:**
+
+#### Path A: Create New Makefile (No existing Makefile)
+
+If your project does not have a Makefile, use this path.
+
 | Task | Description | Completed | Date |
 |------|-------------|-----------|------|
-| TASK-1800 | If `<project-root>/Makefile` does not exist, create it with a minimal template (see below) | | |
-| TASK-1900 | Open `<project-root>/Makefile` and locate the `.PHONY` declaration | | |
-| TASK-2000 | Add `docs`, `docs-serve`, `docs-clean`, `uv-sync-group-docs`, and `uv-sync-all-groups` to the `.PHONY` declaration | | |
-| TASK-2100 | Add `docs` target that runs `uv run mkdocs build` | | |
-| TASK-2200 | Add `docs-serve` target that runs `uv run mkdocs serve` | | |
-| TASK-2300 | Add `docs-clean` target that removes the `doc/html/` directory contents | | |
-| TASK-2400 | Add `uv-sync-group-docs` target that runs `uv sync --group docs` | | |
-| TASK-2500 | Add `uv-sync-all-groups` target that runs `uv sync --all-groups` | | |
-| TASK-2600 | Update the `default` target help text to include documentation commands | | |
+| TASK-1800 | Verify no Makefile exists: `ls Makefile` should return "No such file" | | |
+| TASK-1900 | Create `<project-root>/Makefile` using the complete template below | | |
+| TASK-2000 | Verify the Makefile works: `make` should display available commands | | |
 
-#### Makefile Additions
+**Complete Makefile Template:**
 
-Add the following targets to `<project-root>/Makefile`:
+Create `<project-root>/Makefile` with this content:
+
+```makefile
+.PHONY: default docs docs-serve docs-clean uv-sync-group-docs uv-sync-all-groups
+
+default:
+	@echo "Available commands:"
+	@echo "  make docs                 Build documentation to doc/html/."
+	@echo "  make docs-serve           Start live documentation server."
+	@echo "  make docs-clean           Remove built documentation."
+	@echo "  make uv-sync-group-docs   Install documentation dependencies only."
+	@echo "  make uv-sync-all-groups   Install all dependency groups."
+
+# --- Documentation ---
+docs:
+	@echo "Building documentation..."
+	uv run mkdocs build
+
+docs-serve:
+	@echo "Starting documentation server at http://127.0.0.1:8000/"
+	uv run mkdocs serve
+
+docs-clean:
+	@echo "Cleaning documentation build..."
+	rm -rf doc/html/*
+
+# --- Dependency Management ---
+uv-sync-group-docs:
+	@echo "Installing documentation dependencies..."
+	uv sync --group docs
+
+uv-sync-all-groups:
+	@echo "Installing all dependency groups..."
+	uv sync --all-groups
+```
+
+**After completing Path A, skip to Phase 5 Results below.**
+
+---
+
+#### Path B: Modify Existing Makefile
+
+If your project already has a Makefile, use this path to add the documentation targets.
+
+| Task | Description | Completed | Date |
+|------|-------------|-----------|------|
+| TASK-2100 | Open `<project-root>/Makefile` and locate the `.PHONY` declaration | | |
+| TASK-2200 | Add `docs`, `docs-serve`, `docs-clean`, `uv-sync-group-docs`, and `uv-sync-all-groups` to `.PHONY` | | |
+| TASK-2300 | Add `docs` target that runs `uv run mkdocs build` | | |
+| TASK-2400 | Add `docs-serve` target that runs `uv run mkdocs serve` | | |
+| TASK-2500 | Add `docs-clean` target that removes the `doc/html/` directory contents | | |
+| TASK-2600 | Add `uv-sync-group-docs` target that runs `uv sync --group docs` | | |
+| TASK-2700 | Add `uv-sync-all-groups` target that runs `uv sync --all-groups` | | |
+| TASK-2800 | Update the `default` target help text to include documentation commands | | |
+
+**Makefile Additions:**
+
+Add the following targets to your existing `<project-root>/Makefile`:
 
 ```makefile
 # --- Documentation ---
@@ -423,43 +480,7 @@ Update the `default` target to show the new commands:
 	@echo "  make uv-sync-all-groups   Install all dependency groups."
 ```
 
-#### Minimal Makefile Template
-
-If your project does not have a Makefile, create `<project-root>/Makefile` with this minimal template:
-
-```makefile
-.PHONY: default docs docs-serve docs-clean uv-sync-group-docs uv-sync-all-groups
-
-default:
-	@echo "Available commands:"
-	@echo "  make docs                 Build documentation to doc/html/."
-	@echo "  make docs-serve           Start live documentation server."
-	@echo "  make docs-clean           Remove built documentation."
-	@echo "  make uv-sync-group-docs   Install documentation dependencies only."
-	@echo "  make uv-sync-all-groups   Install all dependency groups."
-
-# --- Documentation ---
-docs:
-	@echo "Building documentation..."
-	uv run mkdocs build
-
-docs-serve:
-	@echo "Starting documentation server at http://127.0.0.1:8000/"
-	uv run mkdocs serve
-
-docs-clean:
-	@echo "Cleaning documentation build..."
-	rm -rf doc/html/*
-
-# --- Dependency Management ---
-uv-sync-group-docs:
-	@echo "Installing documentation dependencies..."
-	uv sync --group docs
-
-uv-sync-all-groups:
-	@echo "Installing all dependency groups..."
-	uv sync --all-groups
-```
+---
 
 #### Phase 5 Results
 
