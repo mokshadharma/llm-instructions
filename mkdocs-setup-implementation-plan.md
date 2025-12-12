@@ -287,10 +287,9 @@ extra:
 
 | Task | Description | Completed | Date |
 |------|-------------|-----------|------|
-| TASK-1500 | Verify the Python package is importable by running `uv run python -c 'import <package-name>'` | | |
-| TASK-1600 | Create `<project-root>/doc/source/index.md` with project title, description, and feature overview | | |
-| TASK-1700 | Create `<project-root>/doc/source/api.md` with mkdocstrings autodoc directive for the main package | | |
-| TASK-1800 | Verify both files exist and have valid Markdown syntax | | |
+| TASK-1500 | Create `<project-root>/doc/source/index.md` with project title, description, and feature overview | | |
+| TASK-1600 | Create `<project-root>/doc/source/api.md` with mkdocstrings autodoc directive for the main package | | |
+| TASK-1700 | Verify both files exist and have valid Markdown syntax | | |
 
 #### Index Page Template
 
@@ -370,15 +369,15 @@ The following pages are commonly useful but not required for the initial setup. 
 
 | Task | Description | Completed | Date |
 |------|-------------|-----------|------|
-| TASK-1900 | If `<project-root>/Makefile` does not exist, create it with a minimal template (see below) | | |
-| TASK-2000 | Open `<project-root>/Makefile` and locate the `.PHONY` declaration | | |
-| TASK-2100 | Add `docs`, `docs-serve`, `docs-clean`, `uv-sync-group-docs`, and `uv-sync-all-groups` to the `.PHONY` declaration | | |
-| TASK-2200 | Add `docs` target that runs `uv run mkdocs build` | | |
-| TASK-2300 | Add `docs-serve` target that runs `uv run mkdocs serve` | | |
-| TASK-2400 | Add `docs-clean` target that removes the `doc/html/` directory contents | | |
-| TASK-2500 | Add `uv-sync-group-docs` target that runs `uv sync --group docs` | | |
-| TASK-2600 | Add `uv-sync-all-groups` target that runs `uv sync --all-groups` | | |
-| TASK-2700 | Update the `default` target help text to include documentation commands | | |
+| TASK-1800 | If `<project-root>/Makefile` does not exist, create it with a minimal template (see below) | | |
+| TASK-1900 | Open `<project-root>/Makefile` and locate the `.PHONY` declaration | | |
+| TASK-2000 | Add `docs`, `docs-serve`, `docs-clean`, `uv-sync-group-docs`, and `uv-sync-all-groups` to the `.PHONY` declaration | | |
+| TASK-2100 | Add `docs` target that runs `uv run mkdocs build` | | |
+| TASK-2200 | Add `docs-serve` target that runs `uv run mkdocs serve` | | |
+| TASK-2300 | Add `docs-clean` target that removes the `doc/html/` directory contents | | |
+| TASK-2400 | Add `uv-sync-group-docs` target that runs `uv sync --group docs` | | |
+| TASK-2500 | Add `uv-sync-all-groups` target that runs `uv sync --all-groups` | | |
+| TASK-2600 | Update the `default` target help text to include documentation commands | | |
 
 #### Makefile Additions
 
@@ -480,8 +479,8 @@ uv-sync-all-groups:
 
 | Task | Description | Completed | Date |
 |------|-------------|-----------|------|
-| TASK-2800 | Add `doc/html/` to `<project-root>/.gitignore` : `touch .gitignore && echo 'doc/html/' >> .gitignore` | | |
-| TASK-2900 | Verify gitignore entry is correct by running `git status` after a build | | |
+| TASK-2700 | Add `doc/html/` to `<project-root>/.gitignore` : `touch .gitignore && echo 'doc/html/' >> .gitignore` | | |
+| TASK-2800 | Verify gitignore entry is correct by running `git status` after a build | | |
 
 #### Gitignore Entries
 
@@ -508,15 +507,15 @@ doc/html/
 
 | Task | Description | Completed | Date |
 |------|-------------|-----------|------|
-| TASK-3000 | Run `make docs` from project root | | |
-| TASK-3100 | Verify HTML output exists at `doc/html/index.html` | | |
-| TASK-3200 | Run `make docs-serve` and open `http://127.0.0.1:8000/` in a browser | | |
-| TASK-3300 | Verify the home page displays correctly with navigation | | |
-| TASK-3400 | Navigate to API Reference and verify docstrings are rendered | | |
-| TASK-3500 | Verify search functionality works (type a function or class name) | | |
-| TASK-3600 | Stop the server (Ctrl+C) and run `make docs-clean` | | |
-| TASK-3700 | Verify `doc/html/` contents are removed | | |
-| TASK-3800 | Run `git status` and verify `doc/html/` is not shown as untracked | | |
+| TASK-2900 | Run `make docs` from project root | | |
+| TASK-3000 | Verify HTML output exists at `doc/html/index.html` | | |
+| TASK-3100 | Run `make docs-serve` and open `http://127.0.0.1:8000/` in a browser | | |
+| TASK-3200 | Verify the home page displays correctly with navigation | | |
+| TASK-3300 | Navigate to API Reference and verify docstrings are rendered | | |
+| TASK-3400 | Verify search functionality works (type a function or class name) | | |
+| TASK-3500 | Stop the server (Ctrl+C) and run `make docs-clean` | | |
+| TASK-3600 | Verify `doc/html/` contents are removed | | |
+| TASK-3700 | Run `git status` and verify `doc/html/` is not shown as untracked | | |
 
 #### Phase 7 Results
 
@@ -633,7 +632,7 @@ plugins:
   - social
 ```
 
-Requires additional dependencies: `pip install pillow cairosvg`
+Requires additional dependencies: `uv add pillow cairosvg --group docs`
 
 ### 8.4 Blog
 
@@ -701,7 +700,7 @@ Add to Makefile as `docs-strict` target if desired.
 
 - **Decision (DEC-0600):** The plan creates minimal starter pages (index.md + api.md) with templates and a list of suggested additional pages.
 
-- **Decision (DEC-0700):** The plan adds three Makefile targets: `docs` (build), `docs-serve` (live preview), and `docs-clean` (remove output).
+- **Decision (DEC-0700):** The plan adds five Makefile targets: `docs` (build), `docs-serve` (live preview), `docs-clean` (remove output), `uv-sync-group-docs` (install doc dependencies), and `uv-sync-all-groups` (install all dependency groups).
 
 - **Decision (DEC-0800):** The plan includes adding `doc/html/` to `.gitignore` to prevent committing build artifacts.
 
