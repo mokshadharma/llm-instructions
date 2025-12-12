@@ -69,7 +69,7 @@ Before starting implementation, verify these prerequisites:
 
 | Task | Description | Completed | Date |
 |------|-------------|-----------|------|
-| TASK-0100 | Open `<project-root>/pyproject.toml` and locate the `[dependency-groups]` section | | |
+| TASK-0100 | Open `<project-root>/pyproject.toml` and locate or create the `[dependency-groups]` section | | |
 | TASK-0200 | Add a `docs` dependency group containing: `mkdocs>=1.6`, `mkdocs-material>=9.5`, `mkdocstrings[python]>=0.27` | | |
 | TASK-0300 | Run `uv sync --group docs` to install the documentation dependencies | | |
 | TASK-0400 | Verify installation by running `uv run mkdocs --version` | | |
@@ -104,7 +104,7 @@ docs = [
 | Task | Description | Completed | Date |
 |------|-------------|-----------|------|
 | TASK-0500 | Create directory `<project-root>/doc/source/` | | |
-| TASK-0600 | Create directory `<project-root>/doc/html/` (will hold generated output) | | |
+| TASK-0600 | Create directory `<project-root>/doc/html/` (will hold generated output; remains empty until build) | | |
 | TASK-0700 | Verify structure exists: `doc/`, `doc/source/`, `doc/html/` | | |
 
 #### Phase 2 Results
