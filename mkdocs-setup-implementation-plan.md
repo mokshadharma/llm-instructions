@@ -71,7 +71,7 @@ Before starting implementation, verify these prerequisites:
 |------|-------------|-----------|------|
 | TASK-0100 | Open `<project-root>/pyproject.toml` and locate the `[dependency-groups]` section | | |
 | TASK-0200 | Add a `docs` dependency group containing: `mkdocs>=1.6`, `mkdocs-material>=9.5`, `mkdocstrings[python]>=0.27` | | |
-| TASK-0300 | Run `make uv-sync-group-docs` or `uv sync --group docs` to install the documentation dependencies (see Phase 5 for Makefile target) | | |
+| TASK-0300 | Run `uv sync --group docs` to install the documentation dependencies | | |
 | TASK-0400 | Verify installation by running `uv run mkdocs --version` | | |
 
 #### Dependency Group Configuration
@@ -689,7 +689,7 @@ Add to Makefile as `docs-strict` target if desired.
 
 ## 9. Decisions
 
-- **Decision (DEC-1100):** The plan targets MkDocs with Material theme instead of Sphinx, prioritizing simplicity, native Markdown support, and faster build times over multi-format output.
+- **Decision (DEC-0100):** Documentation source files are stored in `doc/source/` and HTML output in `doc/html/`, matching the user's specified directory structure.
 
 - **Decision (DEC-0200):** The plan uses Material for MkDocs as the theme, providing modern UI features including dark mode, navigation tabs, search highlighting, and code copy buttons.
 
@@ -698,8 +698,6 @@ Add to Makefile as `docs-strict` target if desired.
 - **Decision (DEC-0400):** The plan assumes Google-style docstrings (the default for mkdocstrings). Projects using NumPy or Sphinx style should change `docstring_style` accordingly.
 
 - **Decision (DEC-0500):** The plan includes comprehensive Markdown extensions for admonitions, code highlighting, Mermaid diagrams, task lists, and tabbed content.
-
-- **Decision (DEC-0100):** Documentation source files are stored in `doc/source/` and HTML output in `doc/html/`, matching the user's specified directory structure.
 
 - **Decision (DEC-0600):** The plan creates minimal starter pages (index.md + api.md) with templates and a list of suggested additional pages.
 
@@ -710,6 +708,8 @@ Add to Makefile as `docs-strict` target if desired.
 - **Decision (DEC-0900):** Man page generation is not supported (MkDocs limitation). Use Sphinx if man pages are required.
 
 - **Decision (DEC-1000):** The plan does not include CI/GitHub Actions configuration, focusing on local documentation build setup.
+
+- **Decision (DEC-1100):** The plan targets MkDocs with Material theme instead of Sphinx, prioritizing simplicity, native Markdown support, and faster build times over multi-format output.
 
 ## 10. Comparison with Sphinx Setup
 
