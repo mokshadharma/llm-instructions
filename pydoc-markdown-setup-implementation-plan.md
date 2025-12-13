@@ -39,7 +39,6 @@ This plan provides step-by-step instructions for setting up pydoc-markdown to ge
 - **GUD-200**: Replace placeholder values (marked with `<...>`) with actual project-specific values during implementation
 - **GUD-300**: The configuration file is placed in `conf/` to group configuration files together; adjust if your project uses a different convention
 - **GUD-400**: If using a `src/` layout, adjust the `search_path` option from `[.]` to `[src]` in the loader configuration
-- **GUD-500**: Enumerate all modules in your package when configuring the renderer; a template for discovering modules is provided
 
 ## 2. Implementation Steps
 
