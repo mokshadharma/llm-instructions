@@ -269,35 +269,37 @@ If your project does not have a Makefile, use this path.
 
 Create `<project-root>/Makefile` with this content:
 
-```makefile
-.PHONY: default docs docs-clean uv-sync-group-docs uv-sync-all-groups
-
-default:
-	@echo "Available commands:"
-	@echo "  make docs                 Generate Markdown API documentation to doc/api/."
-	@echo "  make docs-clean           Remove generated documentation."
-	@echo "  make uv-sync-group-docs   Install documentation dependencies only."
-	@echo "  make uv-sync-all-groups   Install all dependency groups."
-
-# --- Documentation ---
-docs:
-	@echo "Generating API documentation..."
-	uv run pydoc-markdown -c conf/pydoc-markdown.yml
-	@echo "Documentation generated in doc/api/"
-
-docs-clean:
-	@echo "Cleaning generated documentation..."
-	rm -rf doc/api/*.md
-	@echo "Cleaned doc/api/"
-
-# --- Dependency Management ---
-uv-sync-group-docs:
-	@echo "Installing documentation dependencies..."
-	uv sync --group docs
-
-uv-sync-all-groups:
-	@echo "Installing all dependency groups..."
-	uv sync --all-groups
+```bash
+printf '%s\n' \
+  '.PHONY: default docs docs-clean uv-sync-group-docs uv-sync-all-groups' \
+  '' \
+  'default:' \
+  '\t@echo "Available commands:"' \
+  '\t@echo "  make docs                 Generate Markdown API documentation to doc/api/."' \
+  '\t@echo "  make docs-clean           Remove generated documentation."' \
+  '\t@echo "  make uv-sync-group-docs   Install documentation dependencies only."' \
+  '\t@echo "  make uv-sync-all-groups   Install all dependency groups."' \
+  '' \
+  '# --- Documentation ---' \
+  'docs:' \
+  '\t@echo "Generating API documentation..."' \
+  '\tuv run pydoc-markdown -c conf/pydoc-markdown.yml' \
+  '\t@echo "Documentation generated in doc/api/"' \
+  '' \
+  'docs-clean:' \
+  '\t@echo "Cleaning generated documentation..."' \
+  '\trm -rf doc/api/*.md' \
+  '\t@echo "Cleaned doc/api/"' \
+  '' \
+  '# --- Dependency Management ---' \
+  'uv-sync-group-docs:' \
+  '\t@echo "Installing documentation dependencies..."' \
+  '\tuv sync --group docs' \
+  '' \
+  'uv-sync-all-groups:' \
+  '\t@echo "Installing all dependency groups..."' \
+  '\tuv sync --all-groups' \
+  | sed 's/\\t/\t/g' > Makefile
 ```
 
 **After completing Path A, skip to Phase 4 Results below.**
@@ -322,26 +324,28 @@ If your project already has a Makefile, use this path to add the documentation t
 
 Add the following targets to your existing `<project-root>/Makefile`:
 
-```makefile
-# --- Documentation ---
-docs:
-	@echo "Generating API documentation..."
-	uv run pydoc-markdown -c conf/pydoc-markdown.yml
-	@echo "Documentation generated in doc/api/"
-
-docs-clean:
-	@echo "Cleaning generated documentation..."
-	rm -rf doc/api/*.md
-	@echo "Cleaned doc/api/"
-
-# --- Dependency Management ---
-uv-sync-group-docs:
-	@echo "Installing documentation dependencies..."
-	uv sync --group docs
-
-uv-sync-all-groups:
-	@echo "Installing all dependency groups..."
-	uv sync --all-groups
+```bash
+printf '%s\n' \
+  '# --- Documentation ---' \
+  'docs:' \
+  '\t@echo "Generating API documentation..."' \
+  '\tuv run pydoc-markdown -c conf/pydoc-markdown.yml' \
+  '\t@echo "Documentation generated in doc/api/"' \
+  '' \
+  'docs-clean:' \
+  '\t@echo "Cleaning generated documentation..."' \
+  '\trm -rf doc/api/*.md' \
+  '\t@echo "Cleaned doc/api/"' \
+  '' \
+  '# --- Dependency Management ---' \
+  'uv-sync-group-docs:' \
+  '\t@echo "Installing documentation dependencies..."' \
+  '\tuv sync --group docs' \
+  '' \
+  'uv-sync-all-groups:' \
+  '\t@echo "Installing all dependency groups..."' \
+  '\tuv sync --all-groups' \
+  | sed 's/\\t/\t/g' >> Makefile
 ```
 
 Update the `.PHONY` declaration to include the new targets:
@@ -352,11 +356,13 @@ Update the `.PHONY` declaration to include the new targets:
 
 Update the `default` target to show the new commands:
 
-```makefile
-	@echo "  make docs                 Generate Markdown API documentation to doc/api/."
-	@echo "  make docs-clean           Remove generated documentation."
-	@echo "  make uv-sync-group-docs   Install documentation dependencies only."
-	@echo "  make uv-sync-all-groups   Install all dependency groups."
+```bash
+printf '%s\n' \
+  '\t@echo "  make docs                 Generate Markdown API documentation to doc/api/."' \
+  '\t@echo "  make docs-clean           Remove generated documentation."' \
+  '\t@echo "  make uv-sync-group-docs   Install documentation dependencies only."' \
+  '\t@echo "  make uv-sync-all-groups   Install all dependency groups."' \
+  | sed 's/\\t/\t/g'
 ```
 
 ---
@@ -508,10 +514,12 @@ find <package-name> -name '*.py' | entr make docs
 
 Add as a Makefile target if desired:
 
-```makefile
-docs-watch:
-	@echo "Watching for changes..."
-	find <package-name> -name '*.py' | entr make docs
+```bash
+printf '%s\n' \
+  'docs-watch:' \
+  '\t@echo "Watching for changes..."' \
+  '\tfind <package-name> -name '"'"'*.py'"'"' | entr make docs' \
+  | sed 's/\\t/\t/g' >> Makefile
 ```
 
 ### 8.2 NumPy-Style Docstrings
