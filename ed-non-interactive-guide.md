@@ -33,15 +33,49 @@ When performing multiple edits on a single file, **always apply changes in rever
 *   **Why?** Inserting or deleting lines changes the line numbers for everything *below* the edit, but never for anything *above* it.
 *   **The Fix:** By starting from the bottom of the file and working up, every line number you determined from the original file remains valid at the moment of execution.
 
-### Example
+**CRITICAL: This applies whether using one script or multiple scripts.**
 
-**Wrong Way (Top-Down):**
-1.  Insert import at line 1 (shifts all subsequent lines down by 1).
-2.  Edit line 50 (which is now line 51). **Result:** You edit the wrong line.
+### Single Script (Preferred)
 
-**Right Way (Bottom-Up):**
-1.  Edit line 50 (it is still exactly at line 50).
-2.  Insert import at line 1. **Result:** Success.
+When all edits can be determined from the original file state, use one atomic script with commands in reverse order.
+
+**Wrong Way (Top-Down in single script):**
+```bash
+ed -s file.py <<'EDSCRIPT1234'
+H
+# Insert at line 1 (shifts everything down)
+1i
+import os
+.
+# Edit line 50 (now at line 51 - WRONG!)
+50s/old/new/
+w
+q
+EDSCRIPT1234
+```
+**Result:** Line 50 edit targets wrong line. **FAILED.**
+
+**Right Way (Bottom-Up in single script):**
+```bash
+ed -s file.py <<'EDSCRIPT4829'
+H
+# Edit line 50 FIRST (still at original position)
+50s/old/new/
+# Insert at line 1 SECOND (doesn't affect line 50)
+1i
+import os
+.
+w
+q
+EDSCRIPT4829
+```
+**Result:** Both edits target correct original line numbers. **SUCCESS.**
+
+### Multiple Scripts
+
+When using multiple scripts (each with `w`), each script sees a NEW file state. Line numbers shift after each write. See "Multi-Script Editing with Verification" section for details.
+
+**Key principle:** Bottom-up ordering within each script, and verification between scripts to account for line number shifts.
 
 ## The Robust Workflow
 
@@ -275,6 +309,60 @@ When using `s/pattern/&/` to *test* whether a line matches (without intending to
 
 ### 3. After every successful edit, immediately verify before proceeding to additional edits.
 
+## Multi-Script Editing with Verification
+
+When making multiple edits across several `ed` invocations (each with its own `w`), verification between scripts is critical to maintain accuracy.
+
+**Mandatory verification after each script:**
+1. Verify the exact change with `ed -s FILE <<< 'H\nSTART,ENDn'`
+2. Measure indentation of changed lines with `awk` (for code files)
+3. Run syntax checker (`python3 -m py_compile`, etc.)
+4. Only proceed to the next script if all checks pass
+
+**Example of verified multi-script editing:**
+```bash
+# Script 1: Add import at top
+ed -s file.py <<'EDSCRIPT4829'
+H
+1i
+import os
+.
+w
+q
+EDSCRIPT4829
+
+# VERIFY before continuing
+ed -s file.py <<'EDSCRIPT1920'
+H
+1,3n
+EDSCRIPT1920
+# Confirm import present at line 1
+
+python3 -m py_compile file.py || { echo "Syntax error after script 1"; exit 1; }
+
+# Script 2: Add function at bottom
+# Line numbers from original file are now shifted by +1
+# Must account for the import insertion
+ed -s file.py <<'EDSCRIPT3847'
+H
+$a
+
+def new_function():
+    pass
+.
+w
+q
+EDSCRIPT3847
+
+# VERIFY again
+python3 -m py_compile file.py || { echo "Syntax error after script 2"; exit 1; }
+```
+
+**Key principle:** After each `w` (write), the file state has changed. Subsequent scripts must account for line number shifts from previous edits. Verification catches errors before they accumulate.
+
+**When single script is better:**
+If all line numbers can be determined from the original file state, combine all edits into one script using bottom-up ordering. This is simpler and safer than multiple scripts.
+
 ## Robust Editing Patterns
 
 ### Comma Safety
@@ -340,6 +428,66 @@ w
 q
 EDSCRIPT7391
 ```
+
+### Quoted vs Unquoted Heredocs: When to Use Each
+
+**Quoted heredoc (`<<'EDSCRIPT4829'`):**
+- **Use for:** Inserting literal code with special characters
+- **Behavior:** Shell does NOT expand variables (`$var`, `$(cmd)`) or interpret backslashes
+- **Best for:** Python/JS/JSON with quotes, dollar signs, backslashes
+
+```bash
+# Inserting Python code with string literals and variables
+ed -s file.py <<'EDSCRIPT4829'
+H
+10a
+def example():
+    msg = "Hello $USER"  # Literal $USER, not expanded
+    return msg
+.
+w
+q
+EDSCRIPT4829
+```
+
+**Unquoted heredoc (`<<EDSCRIPT4829`):**
+- **Use for:** Programmatic indentation with the `I()` function
+- **Behavior:** Shell DOES expand variables (`$base`, `$(I 2)`) before `ed` sees them
+- **Required for:** Multi-level indentation patterns
+
+```bash
+# Programmatic indentation (requires unquoted heredoc)
+base=$(sed -n '50s/^\([[:space:]]*\).*/\1/p' file.py)
+unit=4
+I() { printf '%s%*s' "$base" $(($1*unit)) ''; }
+
+ed -s file.py <<EDSCRIPT4829
+H
+50a
+$(I 0)def method(self):
+$(I 1)return True
+.
+w
+q
+EDSCRIPT4829
+```
+
+**Common mistake:** Using `$(I 0)` inside a quoted heredoc
+```bash
+# WRONG: $(I 0) appears literally in file
+ed -s file.py <<'EDSCRIPT4829'
+H
+10a
+$(I 0)def example():  # This is LITERAL text: "$(I 0)def example():"
+.
+w
+q
+EDSCRIPT4829
+```
+
+**Decision flowchart:**
+1. Does your insertion need shell variable expansion (like `$(I 0)`)? → Use UNQUOTED `<<EDSCRIPT`
+2. Otherwise → Use QUOTED `<<'EDSCRIPT'` (safer default)
 
 ## Essential Commands Reference
 
@@ -582,13 +730,25 @@ When using `s/pattern/&/` for assertions or `s/old/new/` for substitutions, thes
 
 When an edit produces invalid syntax or incorrect results:
 
-1. **First, try to fix it with a targeted correction.** Use `ed` to make a specific fix to the problem area.
+1. **First failed edit:** Try ONE targeted correction using `ed` to fix the specific problem.
 
-2. **If stuck after multiple failed attempts**, suggest to the user that reverting the file and starting fresh may be the best path forward:
+2. **Second failed edit:** Consider whether continuing is productive. If you've lost track of file state or can't explain why edits are failing, reverting may be faster:
    ```bash
    git checkout FILE
    ```
-   Then redo the edit correctly from the beginning.
+   Then analyze what went wrong and identify the line numbers to edit before trying again.
 
-**Key insight:** Patching a broken edit with more edits can work, but if you find yourself making multiple correction attempts without success, a clean revert is faster than continuing to debug cascading errors.
+**After revert, before retry:**
+1. Re-read the file to understand current state
+2. Identify exact line numbers for all needed edits
+3. Determine whether edits can be combined in a single atomic script
+4. Use single script with bottom-up ordering when possible
+5. Verify immediately after execution
+
+**Warning signs you may need to revert:**
+- Lost track of which content is where
+- Can't explain why an edit failed
+- Repeating same verification commands without progress
+
+**Key insight:** Patching a broken edit with more edits can work, but if you find yourself making multiple correction attempts without success, a clean revert + redesign is faster and safer than continued patching.
 
