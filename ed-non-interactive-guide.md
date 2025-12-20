@@ -5,7 +5,7 @@ This guide outlines a fail-safe methodology for programmatically editing files u
 ## Quick Reference (TL;DR)
 
 1. **Locate:** `ed -s FILE <<'EDSCRIPT####'` ... `START,ENDn` ... `EDSCRIPT####` (always append a random number)
-2. **Measure indent:** `bin/measure-indent.py LINE FILE`
+2. **Measure indent:** `bin/measure-indent.py LINE-SPEC FILE` (LINE-SPEC examples: `47`, `10,20`, `15-18`, `5,10-12,20`)
 3. **Edit bottom-up:** Start from highest line number, work down
 4. **Script structure:** `H` first, `w` then `q` last
 5. **Anchor edits:** Use `s/pattern/&/` to verify line content before editing
@@ -92,9 +92,17 @@ H
 START,ENDn
 EDSCRIPT4829
 
-# Get exact indentation of the line you'll edit (replace LINE with the line number)
-bin/measure-indent.py LINE FILE
+# REQUIRED: Measure indent with this tool - never estimate visually
+bin/measure-indent.py LINE-SPEC FILE
 ```
+
+**ALWAYS use `bin/measure-indent.py` for measuring indentation.** Never estimate indent visually by counting spaces in terminal output or editor displays - visual counting is unreliable and leads to failed edits.
+
+**LINE-SPEC syntax:**
+- Single line: `47`
+- Multiple lines: `10,20,35`
+- Range: `15-18` (lines 15, 16, 17, 18)
+- Combination: `5,10-12,20` (lines 5, 10, 11, 12, 20)
 
 **Understanding the Two Measurements:**
 
@@ -210,10 +218,10 @@ EDSCRIPT4829
 ### 3. Verify: Check Your Work
 After running the script, **verify the changes immediately**, including indentation.
 
-**CRITICAL: Always verify indentation after edits.** Use the same measurement command from Step 1:
+**CRITICAL: Verify indentation after edits with `bin/measure-indent.py` - never count spaces visually.** Use the same command from Step 1:
 ```bash
-# Verify indentation of the newly inserted line (replace LINE with actual line number)
-bin/measure-indent.py LINE FILE
+# REQUIRED: Measure indent with this tool - never estimate visually
+bin/measure-indent.py LINE-SPEC FILE
 
 # View the edited region with line numbers
 ed -s FILE <<'EDSCRIPT####'
@@ -230,9 +238,16 @@ EDSCRIPT####
 **Example verification workflow:**
 ```bash
 # Before edit: measured line 829 has 8 spaces
-# After edit: verify new line 830 also has 8 spaces
+# After edit: verify new line 830 matches its neighbors
 bin/measure-indent.py 830 myfile.py
-# Output should be: Line 830: 8
+# Output: Line 830: 8
+
+# Or verify with context using a range:
+bin/measure-indent.py 829-831 myfile.py
+# Output:
+#   Line 829: 8
+#   Line 830: 8
+#   Line 831: 8
 ```
 
 
