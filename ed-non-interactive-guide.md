@@ -429,6 +429,159 @@ q
 EDSCRIPT7391
 ```
 
+
+### Editing Files Containing ed Commands
+
+When editing files that contain `ed` commands as content (such as documentation, tutorials, or this guide itself), those content lines can be misinterpreted as actual `ed` commands during editing.
+
+**The Problem:**
+
+Lines in your content that look like `ed` commands will be executed instead of inserted:
+- A line containing just `.` will terminate input mode prematurely
+- Lines like `w`, `q`, `H`, or line numbers may be interpreted as commands
+- Heredoc delimiters in content may conflict with your script's delimiter
+
+**The Solution: Sentinel Prefixes**
+
+Prefix **every line** of inserted content with a sentinel (e.g., `%%`), then remove the sentinels in a second pass. Do not try to selectively prefix only "dangerous" lines - this leads to mistakes.
+
+**The Golden Rule: Prefix Every Inserted Line**
+
+When using `ed` to insert content:
+1. **Every line** between the append/insert command and the terminating `.` gets a `%%` prefix
+2. The terminating `.` does NOT need a prefix (it's outside the content)
+3. After the edit, strip all `%%` prefixes from the inserted range
+
+This eliminates all judgment calls about which lines are "safe."
+
+**Critical: The sentinel only affects the START of each line**
+
+The strip command `s/^%%//` removes `%%` from the **beginning** of each line only. Everything else on the line passes through unchanged. Do not think about "nesting levels" - just add `%%` at the start, and it gets removed from the start. Content elsewhere on the line (including other `%%` sequences) is untouched.
+
+**Example: Inserting a code block with ed commands**
+
+Suppose you want to insert this content after line 50 of `file.md`:
+
+```
+This is a code example:
+ed -s example.py <<'EDSCRIPT'
+H
+10,20n
+.
+w
+q
+EDSCRIPT
+```
+
+**Step 1: Insert with sentinels on EVERY line**
+
+```bash
+ed -s file.md <<'EDSCRIPT8472'
+H
+50a
+%%```
+%%This is a code example:
+%%ed -s example.py <<'EDSCRIPT'
+%%H
+%%10,20n
+%%.
+%%w
+%%q
+%%EDSCRIPT
+%%```
+.
+w
+q
+EDSCRIPT8472
+```
+
+Notice:
+- Every content line has `%%` prefix
+- The terminating `.` is left as-is (it's part of the outer script, not content)
+- No judgment calls about which lines need protection
+
+**Step 2: Verify the insertion (with sentinels still in place)**
+
+```bash
+ed -s file.md <<'EDSCRIPT9284'
+H
+51,61n
+Q
+EDSCRIPT9284
+```
+
+You should see every inserted line starting with `%%`. Verify the count and content are correct before proceeding.
+
+**Step 3: Strip the sentinels**
+
+```bash
+ed -s file.md <<'EDSCRIPT9173'
+H
+51,61s/^%%//
+w
+q
+EDSCRIPT9173
+```
+
+**Step 4: Verify the final result**
+
+```bash
+ed -s file.md <<'EDSCRIPT8374'
+H
+51,61n
+Q
+EDSCRIPT8374
+```
+
+Confirm no `%%` prefixes remain and the content is correct.
+
+**Why prefix EVERY line?**
+
+Selectively prefixing only "dangerous" lines leads to errors:
+- You might miss a line that looks safe but isn't
+- Nesting levels get confusing (content showing sentinel examples needs double prefixes)
+- Mental overhead increases with complexity
+
+By prefixing every line unconditionally, you:
+- Eliminate judgment calls
+- Make the pattern mechanical and reliable
+- Can verify correctness by simply checking that all inserted lines start with `%%`
+
+**Sentinel choice:**
+- `%%` is recommended: unlikely to appear at the start of real content
+- Avoid sentinels that might conflict with the file's actual content
+
+**Nested case: Content that should contain `%%` in the final result**
+
+When inserting content that should display `%%` prefixes after editing (e.g., documentation about this technique), use double prefixes:
+
+- Lines that should end up **clean**: prefix with `%%` (stripped to nothing)
+- Lines that should end up **with `%%`**: prefix with `%%%%` (stripped to `%%`)
+
+**Example:** Inserting documentation that shows sentinel usage
+
+Desired final content:
+```
+To protect this line, prefix it with %%
+```
+
+What you type in the ed script:
+```bash
+ed -s file.md <<'EDSCRIPT1234'
+H
+50a
+%%To protect this line, prefix it with %%%%
+.
+w
+q
+EDSCRIPT1234
+```
+
+After running `s/^%%//` on the inserted line:
+- `%%To protect this line, prefix it with %%%%` becomes `To protect this line, prefix it with %%`
+
+**The rule is simple:** For every layer of stripping, add one `%%` prefix. Most cases need one layer. Nested examples need two.
+
 ### Quoted vs Unquoted Heredocs: When to Use Each
 
 **Quoted heredoc (`<<'EDSCRIPT4829'`):**
