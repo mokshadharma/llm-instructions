@@ -259,6 +259,8 @@ The `w` (write) command **must appear exactly once, at the very end of the scrip
 *   **Why:** `ed` operates on an in-memory buffer. If your script fails halfway through (e.g., a strict assertion fails), and you haven't issued a `w` command, the file on disk remains **completely untouched**.
 *   **Benefit:** This provides "All-or-Nothing" transactional safety. If the script crashes, the file is safe.
 
+**CRITICAL LIMITATION:** This atomicity only applies *within a single script*. When using multiple scripts (each with its own `w`), the first script's successful write changes the file state. Any subsequent scripts that rely on outdated information (such as line content from earlier `rg` or `grep` output) will target the wrong content. See "Multi-Script Editing with Verification" for the mandatory verification workflow between scripts.
+
 ## Advanced: Strict Contextual Anchoring (Required)
 
 Even with bottom-up editing, you might target the wrong line if the file changed unexpectedly. To prevent silent failures or corruption, you **must** use Strict Contextual Anchoring for every edit.
@@ -311,6 +313,21 @@ When using `s/pattern/&/` to *test* whether a line matches (without intending to
 
 ## Multi-Script Editing with Verification
 
+**WARNING: The #1 Multi-Script Failure Mode**
+
+After a script writes (`w`), all prior context about the file is potentially stale:
+- Line numbers may have shifted
+- Line content may have changed
+- Output from earlier `rg`, `grep`, or `ed` queries no longer reflects reality
+
+**The failure pattern:**
+1. You query the file and note line numbers/content
+2. Script 1 runs successfully and writes
+3. You run Script 2 using the *original* query results
+4. Script 2 fails or corrupts the file because line 50 no longer contains what you expected
+
+**The solution:** After every `w`, you MUST re-query the file before constructing the next script. Never reuse stale context.
+
 When making multiple edits across several `ed` invocations (each with its own `w`), verification between scripts is critical to maintain accuracy.
 
 **Mandatory verification after each script:**
@@ -362,6 +379,27 @@ python3 -m py_compile file.py || { echo "Syntax error after script 2"; exit 1; }
 
 **When single script is better:**
 If all line numbers can be determined from the original file state, combine all edits into one script using bottom-up ordering. This is simpler and safer than multiple scripts.
+
+**Strict anchoring is NON-OPTIONAL for multi-script edits**
+
+When editing across multiple scripts, strict contextual anchoring (`s/pattern/&/`) becomes your last line of defense. Even if you forget to re-verify line numbers, an anchor assertion will cause the script to fail safely rather than corrupt the file.
+
+**Example: Safe multi-script pattern**
+```bash
+# Script 1 completed - file has changed
+# Script 2: MUST anchor before editing
+ed -s file.py <<'EDSCRIPT2847'
+H
+# Assert line 50 still contains expected content BEFORE editing
+50s/expected_function_name/&/
+# Only if assertion passes, proceed with edit
+50s/old_value/new_value/
+w
+q
+EDSCRIPT2847
+```
+
+If the anchor fails, you know to re-query the file and find the correct line number. This is far better than silently editing the wrong line.
 
 ## Robust Editing Patterns
 
