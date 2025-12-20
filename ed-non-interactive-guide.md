@@ -5,7 +5,7 @@ This guide outlines a fail-safe methodology for programmatically editing files u
 ## Quick Reference (TL;DR)
 
 1. **Locate:** `ed -s FILE <<'EDSCRIPT####'` ... `START,ENDn` ... `EDSCRIPT####` (always append a random number)
-2. **Measure indent:** `awk -v n=LINE 'NR==n {match($0, /^[ \t]*/); print length(substr($0, RSTART, RLENGTH))}' FILE`
+2. **Measure indent:** `bin/measure-indent.py LINE FILE`
 3. **Edit bottom-up:** Start from highest line number, work down
 4. **Script structure:** `H` first, `w` then `q` last
 5. **Anchor edits:** Use `s/pattern/&/` to verify line content before editing
@@ -93,12 +93,12 @@ START,ENDn
 EDSCRIPT4829
 
 # Get exact indentation of the line you'll edit (replace LINE with the line number)
-awk -v n=LINE 'NR==n {match($0, /^[ \t]*/); print length(substr($0, RSTART, RLENGTH))}' FILE
+bin/measure-indent.py LINE FILE
 ```
 
 **Understanding the Two Measurements:**
 
-1. **Line indentation** (from the awk command above): The number of leading spaces on a specific line
+1. **Line indentation** (from `bin/measure-indent.py` above): The number of leading spaces on a specific line
 2. **Indent width** (from the Example workflow below): The file's indent unit (typically 4 spaces)
 
 **How to use them together:**
@@ -113,8 +113,8 @@ awk '/^(def |class )/ { in_func=1; next } in_func && /^[[:space:]]+[^[:space:]]/
 # Output: 4
 
 # 2. Find the indentation of line 47 (an existing attribute you want to add a sibling to)
-awk -v n=47 'NR==n {match($0, /^[ \t]*/); print length(substr($0, RSTART, RLENGTH))}' myfile.py
-# Output: 8
+bin/measure-indent.py 47 myfile.py
+# Output: Line 47: 8
 
 # Conclusion: New sibling attributes need 8 spaces
 # A child block inside that line would need 8 + 4 = 12 spaces
@@ -213,7 +213,7 @@ After running the script, **verify the changes immediately**, including indentat
 **CRITICAL: Always verify indentation after edits.** Use the same measurement command from Step 1:
 ```bash
 # Verify indentation of the newly inserted line (replace LINE with actual line number)
-awk -v n=LINE 'NR==n {match($0, /^[ \t]*/); print length(substr($0, RSTART, RLENGTH))}' FILE
+bin/measure-indent.py LINE FILE
 
 # View the edited region with line numbers
 ed -s FILE <<'EDSCRIPT####'
@@ -231,8 +231,8 @@ EDSCRIPT####
 ```bash
 # Before edit: measured line 829 has 8 spaces
 # After edit: verify new line 830 also has 8 spaces
-awk -v n=830 'NR==n {match($0, /^[ \t]*/); print length(substr($0, RSTART, RLENGTH))}' myfile.py
-# Output should be: 8
+bin/measure-indent.py 830 myfile.py
+# Output should be: Line 830: 8
 ```
 
 
@@ -315,7 +315,7 @@ When making multiple edits across several `ed` invocations (each with its own `w
 
 **Mandatory verification after each script:**
 1. Verify the exact change with `ed -s FILE <<< 'H\nSTART,ENDn'`
-2. Measure indentation of changed lines with `awk` (for code files)
+2. Measure indentation of changed lines with `bin/measure-indent.py` (for code files)
 3. Run syntax checker (`python3 -m py_compile`, etc.)
 4. Only proceed to the next script if all checks pass
 
