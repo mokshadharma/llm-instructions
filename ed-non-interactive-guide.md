@@ -175,7 +175,8 @@ I() { printf '%s%*s' "$base" $(($1*unit)) ''; }
 
 **Usage in ed heredoc:**
 ```bash
-ed -s FILE <<EOF
+ed -s FILE <<EDSCRIPT4829
+H
 830a
 $(I 0)# Comment at base indent level
 $(I 0)try:
@@ -186,7 +187,7 @@ $(I 1)pass
 .
 w
 q
-EOF
+EDSCRIPT4829
 ```
 
 **Key points:**
