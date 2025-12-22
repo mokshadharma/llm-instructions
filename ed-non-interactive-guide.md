@@ -271,7 +271,7 @@ By default, `ed` only prints `?` on error. You **must** enable verbose error mes
 
 ### 2. The "Write-Once" Atomicity Rule
 The `w` (write) command **must appear exactly once, at the very end of the script**.
-*   **Why:** `ed` operates on an in-memory buffer. If your script fails halfway through (e.g., a strict assertion fails), and you haven't issued a `w` command, the file on disk remains **completely untouched**.
+*   **Why:** `ed` operates on an in-memory buffer. If you use `Q` (quit unconditionally) instead of `w` followed by `q`, and something goes wrong, the file on disk remains **completely untouched**. Note: assertion failures (`s/pattern/&/`) do NOT stop script execution - ed continues with subsequent commands.
 *   **Benefit:** This provides "All-or-Nothing" transactional safety. If the script crashes, the file is safe.
 
 **CRITICAL LIMITATION:** This atomicity only applies *within a single script*. When using multiple scripts (each with its own `w`), the first script's successful write changes the file state. Any subsequent scripts that rely on outdated information (such as line content from earlier `rg` or `grep` output) will target the wrong content. See "Multi-Script Editing with Verification" for the mandatory verification workflow between scripts.
@@ -282,7 +282,7 @@ Even with bottom-up editing, you might target the wrong line if the file changed
 
 **The Technique:**
 Use the substitute command `s/pattern/&/` to assert that the target line matches a specific pattern before executing the edit.
-*   **Why:** If the pattern is not found, `ed` returns an error (`?`) and aborts the script immediately. This prevents the script from editing the wrong line or continuing in an invalid state.
+*   **Why:** If the pattern is not found, `ed` prints an error (`?`) but **continues executing subsequent commands**. However, ed exits with a non-zero status code, which you can check after the script completes. To truly abort on assertion failure, run the assertion in a separate ed invocation (with `Q` to quit without saving), check the exit code, and only proceed if it passed.
 * **Note:** You must escape special regex characters (like `*`, `[`, `.`) in the pattern. Failure to escape `[` or `.` will cause `ed` to interpret them as regex classes or wildcards, leading to "No match" errors or incorrect edits.
 
 **Example:**
@@ -305,7 +305,7 @@ Assert that line 83 actually contains "Keys" before editing:
 .
 ```
 
-This ensures you don't accidentally append to the wrong list if line numbers have shifted. If line 83 does not contain "Keys", the script fails safely.
+This ensures you don't accidentally append to the wrong list if line numbers have shifted. If line 83 does not contain "Keys", the assertion prints an error and ed exits with non-zero status - but **the subsequent commands still execute**. To prevent this, use separate ed invocations: one for the assertion (with `Q`), and only run the edit if the assertion passed.
 
 **Warning: `q` vs `Q` when testing assertions**
 
@@ -397,7 +397,7 @@ If all line numbers can be determined from the original file state, combine all 
 
 **Strict anchoring is NON-OPTIONAL for multi-script edits**
 
-When editing across multiple scripts, strict contextual anchoring (`s/pattern/&/`) becomes your last line of defense. Even if you forget to re-verify line numbers, an anchor assertion will cause the script to fail safely rather than corrupt the file.
+When editing across multiple scripts, strict contextual anchoring (`s/pattern/&/`) helps detect errors via ed's non-zero exit status. However, **it does not prevent subsequent commands from executing**. If the assertion fails, ed prints an error but continues with the edit. The safest approach is to run assertions in a separate ed invocation (with `Q`) and check the exit code before proceeding.
 
 **Example: Safe multi-script pattern**
 ```bash
