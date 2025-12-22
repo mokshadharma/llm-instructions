@@ -33,35 +33,47 @@ When performing multiple edits on a single file, **always apply changes in rever
 *   **Why?** Inserting or deleting lines changes the line numbers for everything *below* the edit, but never for anything *above* it.
 *   **The Fix:** By starting from the bottom of the file and working up, every line number you determined from the original file remains valid at the moment of execution.
 
-**CRITICAL: This applies whether using one script or multiple scripts.**
+**CRITICAL: Always use one operation per ed invocation. Execute operations in bottom-up order (highest line numbers first).**
 
-### Single Script (Preferred)
+### Why Bottom-Up Order Matters
 
-When all edits can be determined from the original file state, use one atomic script with commands in reverse order.
+When you have multiple operations to perform, execute them as separate ed invocations, starting with the highest line number:
 
-**Wrong Way (Top-Down in single script):**
+**Wrong Way (Top-Down order):**
 ```bash
+# Operation 1: Insert at line 1 (shifts everything down)
 ed -s file.py <<'EDSCRIPT1234'
 H
-# Insert at line 1 (shifts everything down)
 1i
 import os
 .
-# Edit line 50 (now at line 51 - WRONG!)
-50s/old/new/
 w
 q
 EDSCRIPT1234
+
+# Operation 2: Edit line 50 - BUT line 50 is now line 51!
+ed -s file.py <<'EDSCRIPT4829'
+H
+50s/old/new/
+w
+q
+EDSCRIPT4829
 ```
 **Result:** Line 50 edit targets wrong line. **FAILED.**
 
-**Right Way (Bottom-Up in single script):**
+**Right Way (Bottom-Up order):**
 ```bash
+# Operation 1: Edit line 50 FIRST (still at original position)
 ed -s file.py <<'EDSCRIPT4829'
 H
-# Edit line 50 FIRST (still at original position)
 50s/old/new/
-# Insert at line 1 SECOND (doesn't affect line 50)
+w
+q
+EDSCRIPT4829
+
+# Verify, then Operation 2: Insert at line 1 (doesn't affect already-edited line 50)
+ed -s file.py <<'EDSCRIPT4829'
+H
 1i
 import os
 .
@@ -69,13 +81,16 @@ w
 q
 EDSCRIPT4829
 ```
-**Result:** Both edits target correct original line numbers. **SUCCESS.**
+**Result:** Both operations target correct line numbers. **SUCCESS.**
 
-### Multiple Scripts
+### Why One Operation Per Invocation?
 
-When using multiple scripts (each with `w`), each script sees a NEW file state. Line numbers shift after each write. See "Multi-Script Editing with Verification" section for details.
+Ed does **not** abort on error. If an assertion or edit fails, ed prints an error but continues executing all subsequent commands, including `w` (write). This means:
+- A failed assertion in a multi-operation script still saves the file
+- You can't stop after detecting a problem
+- Partial edits get written to disk
 
-**Key principle:** Bottom-up ordering within each script, and verification between scripts to account for line number shifts.
+With one operation per invocation, you can verify and stop between operations if something goes wrong.
 
 ## The Robust Workflow
 
@@ -185,8 +200,8 @@ EOF
 - `printf '%*s'` generates exactly the specified number of spaces
 - Shell expansion happens before `ed` sees the content
 
-### 2. Script: Construct the Atomic Edit
-Create a single script using a **Quoted Heredoc** (`<<'EDSCRIPT4829'`).
+### 2. Script: Construct the Edit (One Operation Per Invocation)
+Create a script using a **Quoted Heredoc** (`<<'EDSCRIPT4829'`).
 
 **Why Quoted Heredoc?**
 Using a quoted delimiter like `'EDSCRIPT4829'` (with quotes) prevents the shell from expanding variables (`$var`) or interpreting backslashes. This allows you to paste code snippets (including quotes and special characters) directly into the script without the "quoting nightmare" of `printf`.
@@ -196,18 +211,33 @@ Using a quoted delimiter like `'EDSCRIPT4829'` (with quotes) prevents the shell 
 2.  Add an item to a list at line 83.
 3.  Add an import at line 1.
 
-**The Script:**
+**The Scripts (one operation per invocation, bottom-up order):**
 ```bash
+# Operation 1: Add method after line 200 (highest line number first)
 ed -s filename.py <<'EDSCRIPT4829'
 H
 200a
     def new_method(self):
         pass
 .
+w
+q
+EDSCRIPT4829
+
+# Verify, then Operation 2: Add item to list at line 83
+ed -s filename.py <<'EDSCRIPT4829'
+H
 83s/$/,/
 83a
     NewItem
 .
+w
+q
+EDSCRIPT4829
+
+# Verify, then Operation 3: Add import at line 1
+ed -s filename.py <<'EDSCRIPT4829'
+H
 1i
 import time
 .
@@ -273,7 +303,7 @@ By default, `ed` only prints `?` on error. You **must** enable verbose error mes
 The `w` (write) command **must appear exactly once, at the very end of the script**.
 *   **Why:** `ed` operates on an in-memory buffer. Until you issue `w`, the file on disk remains untouched - this is the source of atomicity.
 *   **Warning:** Assertion failures (`s/pattern/&/`) do NOT stop script execution. Ed prints an error but continues with subsequent commands, including `w`. The exit code will be non-zero, but the file will still be written.
-*   **Benefit:** This provides "All-or-Nothing" transactional safety. If the script crashes, the file is safe.
+*   **Benefit:** If the script crashes (e.g., ed is killed), the file is safe because nothing was written. However, if the script completes, `w` always executes - even after assertion failures.
 
 **CRITICAL LIMITATION:** This atomicity only applies *within a single script*. When using multiple scripts (each with its own `w`), the first script's successful write changes the file state. Any subsequent scripts that rely on outdated information (such as line content from earlier `rg` or `grep` output) will target the wrong content. See "Multi-Script Editing with Verification" for the mandatory verification workflow between scripts.
 
@@ -430,7 +460,7 @@ If the assertion failed, `$?` will be non-zero after the script completes. The e
 When appending items to lists or dictionaries in code, the previous line might be missing a trailing comma.
 
 **The Pattern:**
-Combine a substitution (to ensure the comma exists) with the append command.
+This pattern combines a substitution (to ensure the comma exists) with an append - these two ed commands together form one semantic operation (add list item).
 
 ```bash
 # Ensure line 83 ends with a comma, then append
@@ -442,13 +472,13 @@ Combine a substitution (to ensure the comma exists) with the append command.
 This works perfectly in reverse order because the `a` command inserts *after* the target line, so line 83 remains stable for the substitution.
 
 ### Atomic Scripts
-Always use a single `ed` invocation with a **Quoted Heredoc** (`<<'EDSCRIPT4829'`). This ensures the file is opened and written only once, prevents race conditions, and handles special characters safely.
+Always use a single `ed` invocation with a **Quoted Heredoc** (`<<'EDSCRIPT4829'`), containing **one operation**. This ensures the file is opened and written only once, prevents race conditions, and handles special characters safely.
 
 ```bash
-# Good
+# Good: One operation per invocation
 ed -s file <<'EDSCRIPT4829'
 H
-...commands...
+50s/old/new/
 w
 q
 EDSCRIPT4829
@@ -759,15 +789,31 @@ q
 EDSCRIPT4829
 ```
 
-**Solution 2: Delete and reinsert in new order**
+**Solution 2: Delete and reinsert in new order (multiple operations - less safe)**
+
+This approach requires multiple operations. For maximum safety, use separate invocations:
 ```bash
+# First, note the content of lines 10 and 11 before editing
+
+# Delete line 11 first (bottom-up)
 ed -s file.md <<'EDSCRIPT4829'
 H
-# First, capture the content you need (or know it beforehand)
-# Delete both lines (bottom-up to preserve line numbers)
 11d
+w
+q
+EDSCRIPT4829
+
+# Delete line 10 (now at original position since we deleted below)
+ed -s file.md <<'EDSCRIPT4829'
+H
 10d
+w
+q
+EDSCRIPT4829
+
 # Insert in new order after line 9
+ed -s file.md <<'EDSCRIPT4829'
+H
 9a
 | TASK-029 | (content from original line 11) |
 | TASK-030 | (content from original line 10) |
@@ -776,6 +822,8 @@ w
 q
 EDSCRIPT4829
 ```
+
+**Recommendation:** Prefer Solution 1 (`m` command) when possible - it's a single operation.
 
 **Key insight:** To reorder lines, you must physically move them using `m` (move), or `d` (delete) combined with `a`/`i` (append/insert). Substitution only changes text within existing lines.
 
@@ -801,17 +849,31 @@ To delete a block of consecutive lines, use a **range delete** - not individual 
 50,55d
 ```
 
-**When to use bottom-up individual deletes vs range delete:**
-- **Range delete (`50,55d`)**: When deleting a *contiguous block* of lines
-- **Bottom-up individual deletes**: When deleting *non-contiguous* lines at different locations (e.g., lines 120, 85, and 12)
+**When to use range delete vs separate invocations:**
+- **Range delete (`50,55d`)**: When deleting a *contiguous block* of lines - this is ONE operation
+- **Separate invocations**: When deleting *non-contiguous* lines at different locations (e.g., lines 120, 85, and 12)
 
-**Example: Deleting non-contiguous lines**
+**Example: Deleting non-contiguous lines (one operation per invocation, bottom-up order)**
 ```bash
+# Delete line 120 first (highest line number)
 ed -s file.py <<'EDSCRIPT4829'
 H
-# Delete lines 120, 85, and 12 (bottom-up to preserve line numbers)
 120d
+w
+q
+EDSCRIPT4829
+
+# Verify, then delete line 85
+ed -s file.py <<'EDSCRIPT4829'
+H
 85d
+w
+q
+EDSCRIPT4829
+
+# Verify, then delete line 12
+ed -s file.py <<'EDSCRIPT4829'
+H
 12d
 w
 q
