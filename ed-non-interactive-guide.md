@@ -398,12 +398,9 @@ python3 -m py_compile file.py || { echo "Syntax error after script 2"; exit 1; }
 
 **Key principle:** After each `w` (write), the file state has changed. Subsequent scripts must account for line number shifts from previous edits. Verification catches errors before they accumulate.
 
-**When single script is better:**
-If all line numbers can be determined from the original file state, combine all edits into one script using bottom-up ordering. This is simpler and safer than multiple scripts.
+**Always use one operation per ed invocation**
 
-**Prefer one operation per invocation for multi-script workflows**
-
-When making multiple edits across separate ed invocations, the safest approach is:
+The safest approach for any editing task:
 1. Make one operation per ed script (inserting 10 lines is one operation; inserting 5 lines then deleting 3 elsewhere is two)
 2. Verify the edit succeeded (syntax check, view the lines)
 3. Re-query line numbers before the next edit
