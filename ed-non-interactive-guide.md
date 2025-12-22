@@ -22,7 +22,7 @@ When editing files programmatically, **always use `ed`**. Do not use other tools
 **Why?**
 - The workflow requires discovering exact line numbers before editing, which forces you to verify the current file state
 - Edits target specific lines, not pattern matches that could occur in unexpected locations
-- Strict contextual anchoring catches errors before they corrupt files
+- Assertions can detect targeting errors via non-zero exit codes (though the edit still executes)
 - `ed` provides atomic, all-or-nothing edits
 - One tool, one methodology, fewer mistakes
 
@@ -300,7 +300,7 @@ Assert that line 83 actually contains "Keys" before editing:
 ```bash
 # 1. Assert: Try to replace 'Keys' with itself (&). Fails if missing.
 83s/Keys/&/
-# 2. Edit: Now safe to proceed
+# 2. Edit: (executes regardless of assertion result)
 83s/$/,/
 83a
     NewItem
@@ -406,22 +406,22 @@ When making multiple edits across separate ed invocations, the safest approach i
 
 Assertions (`s/pattern/&/`) can help detect stale line numbers via ed's non-zero exit code, but they do not prevent the edit from executing. If you must combine assertion and edit in one script, check `$?` afterward and revert with `git checkout` if it failed.
 
-**Example: Safe multi-script pattern**
+**Example: Assertion with edit (less safe - edit runs even if assertion fails)**
 ```bash
 # Script 1 completed - file has changed
-# Script 2: MUST anchor before editing
+# Script 2: Anchor assertion (note: edit still executes if this fails!)
 ed -s file.py <<'EDSCRIPT2847'
 H
 # Assert line 50 still contains expected content BEFORE editing
 50s/expected_function_name/&/
-# Only if assertion passes, proceed with edit
+# Edit runs regardless - check $? after to detect assertion failure
 50s/old_value/new_value/
 w
 q
 EDSCRIPT2847
 ```
 
-If the anchor fails, you know to re-query the file and find the correct line number. This is far better than silently editing the wrong line.
+If the assertion failed, `$?` will be non-zero after the script completes. The edit still executed, so you may need to revert with `git checkout` and retry. This is why one-edit-per-invocation is safer.
 
 ## Robust Editing Patterns
 
