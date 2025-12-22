@@ -955,8 +955,8 @@ When an edit produces invalid syntax or incorrect results:
 **After revert, before retry:**
 1. Re-read the file to understand current state
 2. Identify exact line numbers for all needed edits
-3. Determine whether edits can be combined in a single atomic script
-4. Use single script with bottom-up ordering when possible
+3. Plan one operation per ed invocation (each operation can modify multiple lines)
+4. Execute operations in bottom-up order (highest line numbers first) to avoid line-number shifts
 5. Verify immediately after execution
 
 **Warning signs you may need to revert:**
