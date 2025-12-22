@@ -339,7 +339,7 @@ Instead of blindly appending to line 83:
 ```bash
 83s/$/,/
 83a
-    NewItem
+$(I 0)NewItem
 .
 ```
 **Strict Assertion:**
@@ -350,7 +350,7 @@ Assert that line 83 actually contains "Keys" before editing:
 # 2. Edit: (executes regardless of assertion result)
 83s/$/,/
 83a
-    NewItem
+$(I 0)NewItem
 .
 ```
 
@@ -424,12 +424,17 @@ python3 -m py_compile file.py || { echo "Syntax error after script 1"; exit 1; }
 # Script 2: Add function at bottom
 # Line numbers from original file are now shifted by +1
 # Must account for the import insertion
-ed -s file.py <<'EDSCRIPT3847'
+# Using unquoted heredoc for $(I N) - base is empty string for column 0
+base=""
+unit=4
+I() { printf '%s%*s' "$base" $(($1*unit)) ''; }
+
+ed -s file.py <<EDSCRIPT3847
 H
 $a
 
-def new_function():
-    pass
+$(I 0)def new_function():
+$(I 1)pass
 .
 w
 q
@@ -476,16 +481,16 @@ When appending items to lists or dictionaries in code, the previous line might b
 This pattern combines a substitution (to ensure the comma exists) with an append - these two ed commands together form one semantic operation (add list item).
 
 ```bash
-# Ensure line 83 ends with a comma, then append
+# Ensure line 83 ends with a comma, then append (using unquoted heredoc for $(I N))
 83s/$/,/
 83a
-    NewItem
+$(I 0)NewItem
 .
 ```
 This works perfectly in reverse order because the `a` command inserts *after* the target line, so line 83 remains stable for the substitution.
 
 ### Atomic Scripts
-Always use a single `ed` invocation with a **Quoted Heredoc** (`<<'EDSCRIPT4829'`), containing **one operation**. This ensures the file is opened and written only once, prevents race conditions, and handles special characters safely.
+Always use a single `ed` invocation containing **one operation**. Use a **Quoted Heredoc** (`<<'EDSCRIPT4829'`) for content without leading whitespace, or an **Unquoted Heredoc** (`<<EDSCRIPT4829`) when using `$(I N)` for indentation. This ensures the file is opened and written only once, prevents race conditions, and handles special characters safely.
 
 ```bash
 # Good: One operation per invocation
@@ -689,18 +694,36 @@ After running `s/^%%//` on the inserted line:
 ### Quoted vs Unquoted Heredocs: When to Use Each
 
 **Quoted heredoc (`<<'EDSCRIPT4829'`):**
-- **Use for:** Inserting literal code with special characters
+- **Use for:** Inserting content at column 0 (no leading whitespace) that contains special characters
 - **Behavior:** Shell does NOT expand variables (`$var`, `$(cmd)`) or interpret backslashes
-- **Best for:** Python/JS/JSON with quotes, dollar signs, backslashes
+- **Best for:** Import statements, top-level definitions, or any column-0 content with `$`, quotes, or backslashes
+- **NOT for:** Any content that needs leading whitespace (use unquoted heredoc with `$(I N)` instead)
 
 ```bash
-# Inserting Python code with string literals and variables
+# Inserting an import with a dollar sign in a comment (column 0, no indentation)
 ed -s file.py <<'EDSCRIPT4829'
 H
-10a
-def example():
-    msg = "Hello $USER"  # Literal $USER, not expanded
-    return msg
+1i
+import os  # Note: $PATH is not expanded here
+.
+w
+q
+EDSCRIPT4829
+```
+
+**What about code that needs BOTH special characters AND indentation?**
+Use an unquoted heredoc with `$(I N)` and escape or quote the special characters:
+```bash
+base=$(sed -n '50s/^\([[:space:]]*\).*/\1/p' file.py)
+unit=4
+I() { printf '%s%*s' "$base" $(($1*unit)) ''; }
+
+ed -s file.py <<EDSCRIPT4829
+H
+50a
+$(I 0)def example():
+$(I 1)msg = "Hello \$USER"  # Escaped $ to prevent expansion
+$(I 1)return msg
 .
 w
 q
