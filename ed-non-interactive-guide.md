@@ -694,6 +694,29 @@ After running `s/^%%//` on the inserted line:
 
 ### Quoted vs Unquoted Heredocs: When to Use Each
 
+
+**Pre-flight Checklist (before any ed edit):**
+1. Does any inserted line need leading whitespace (indentation)?
+2. If YES: You MUST use unquoted heredoc + `I()` function
+3. If NO: Quoted heredoc is acceptable
+
+**Common mistake:** Using literal spaces in a quoted heredoc for indented code
+```bash
+# WRONG: Literal spaces will be mangled or inconsistent
+ed -s file.py <<'EDSCRIPT4829'
+H
+$a
+
+def my_function():
+    return True  # These literal spaces are fragile
+.
+w
+q
+EDSCRIPT4829
+```
+
+The correct approach uses `I()` with an unquoted heredoc - see examples below.
+
 **Quoted heredoc (`<<'EDSCRIPT4829'`):**
 - **Use for:** Inserting content at column 0 (no leading whitespace) that contains special characters
 - **Behavior:** Shell does NOT expand variables (`$var`, `$(cmd)`) or interpret backslashes
