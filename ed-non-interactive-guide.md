@@ -279,12 +279,16 @@ The `w` (write) command **must appear exactly once, at the very end of the scrip
 
 ## Advanced: Strict Contextual Anchoring (Required)
 
-Even with bottom-up editing, you might target the wrong line if the file changed unexpectedly. To prevent silent failures or corruption, you **must** use Strict Contextual Anchoring for every edit.
+**Why required:** Anchoring costs nothing when it matches, but provides two benefits when the target line has shifted:
+1. For substitution edits (`s/old/new/`): if the anchor fails, the edit also won't find `old`, so nothing changes - no corruption
+2. For all edits: ed exits with non-zero status, signaling something went wrong
+
+Even with bottom-up editing, you might target the wrong line if the file changed unexpectedly. Assertions help detect this, but they do **not** prevent subsequent commands from executing (see warnings below).
 
 **The Technique:**
 Use the substitute command `s/pattern/&/` to verify you're targeting the correct line. If the pattern matches, the command succeeds silently. If not, ed prints an error.
 *   **Important:** A failed assertion does NOT stop script execution. Ed prints the error but continues with subsequent commands. The value of assertions is that ed's exit code will be non-zero, allowing you to detect problems after the script completes.
-*   **Recommended workflow:** Do one edit per ed invocation. Verify after each edit. This avoids the need for in-script assertions entirely.
+*   **Recommended workflow:** Do one operation per ed invocation (an operation can insert/delete/change multiple lines, but is a single ed command). Verify after each. This avoids the need for in-script assertions entirely.
 * **Note:** You must escape special regex characters (like `*`, `[`, `.`) in the pattern. Failure to escape `[` or `.` will cause `ed` to interpret them as regex classes or wildcards, leading to "No match" errors or incorrect edits.
 
 **Example:**
@@ -307,7 +311,7 @@ Assert that line 83 actually contains "Keys" before editing:
 .
 ```
 
-The assertion helps you notice if line numbers shifted - ed's exit code will be non-zero. However, the edit still executes. For true safety, use one edit per ed invocation and verify after each.
+The assertion helps you notice if line numbers shifted - ed's exit code will be non-zero. However, the edit still executes. For true safety, use one operation per ed invocation and verify after each.
 
 **Warning: `q` vs `Q` when testing assertions**
 
@@ -397,10 +401,10 @@ python3 -m py_compile file.py || { echo "Syntax error after script 2"; exit 1; }
 **When single script is better:**
 If all line numbers can be determined from the original file state, combine all edits into one script using bottom-up ordering. This is simpler and safer than multiple scripts.
 
-**Prefer one edit per invocation for multi-script workflows**
+**Prefer one operation per invocation for multi-script workflows**
 
 When making multiple edits across separate ed invocations, the safest approach is:
-1. Make one edit per ed script
+1. Make one operation per ed script (inserting 10 lines is one operation; inserting 5 lines then deleting 3 elsewhere is two)
 2. Verify the edit succeeded (syntax check, view the lines)
 3. Re-query line numbers before the next edit
 
@@ -421,7 +425,7 @@ q
 EDSCRIPT2847
 ```
 
-If the assertion failed, `$?` will be non-zero after the script completes. The edit still executed, so you may need to revert with `git checkout` and retry. This is why one-edit-per-invocation is safer.
+If the assertion failed, `$?` will be non-zero after the script completes. The edit still executed, so you may need to revert with `git checkout` and retry. This is why one-operation-per-invocation is safer.
 
 ## Robust Editing Patterns
 
