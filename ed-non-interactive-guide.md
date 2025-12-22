@@ -13,6 +13,8 @@ This guide outlines a fail-safe methodology for programmatically editing files u
 
 **The `-s` flag:** Always use `ed -s` (silent mode) to suppress the byte count printed when the file is loaded. This keeps output clean and makes error detection easier.
 
+> **WARNING: NEVER type literal leading whitespace in heredocs.** All indentation must come from the `$(I N)` function. See "Programmatic Indentation for Insertions" below.
+
 
 
 ## Always Use `ed` for File Editing
@@ -201,10 +203,11 @@ EOF
 - Shell expansion happens before `ed` sees the content
 
 ### 2. Script: Construct the Edit (One Operation Per Invocation)
-Create a script using a **Quoted Heredoc** (`<<'EDSCRIPT4829'`).
 
-**Why Quoted Heredoc?**
-Using a quoted delimiter like `'EDSCRIPT4829'` (with quotes) prevents the shell from expanding variables (`$var`) or interpreting backslashes. This allows you to paste code snippets (including quotes and special characters) directly into the script without the "quoting nightmare" of `printf`.
+**CRITICAL: For any insertion with indentation, you MUST use programmatic indentation.** See the "Programmatic Indentation for Insertions" section above. Never type literal leading whitespace in heredocs.
+
+- **Unquoted heredoc** (`<<EDSCRIPT4829`): Required when using `$(I N)` for indentation
+- **Quoted heredoc** (`<<'EDSCRIPT4829'`): Only for content with no leading whitespace (e.g., imports at column 0)
 
 **Scenario:**
 1.  Add a method after line 200.
@@ -213,29 +216,39 @@ Using a quoted delimiter like `'EDSCRIPT4829'` (with quotes) prevents the shell 
 
 **The Scripts (one operation per invocation, bottom-up order):**
 ```bash
+# Setup: Define the indentation function (see "Programmatic Indentation" section)
+base=$(sed -n '200s/^\([[:space:]]*\).*/\1/p' filename.py)
+unit=$(awk '/^[[:space:]]+[^[:space:]]/{match($0,/^[[:space:]]+/);if(p&&RLENGTH>p){print RLENGTH-p;exit}p=RLENGTH}' filename.py)
+unit=${unit:-4}
+I() { printf '%s%*s' "$base" $(($1*unit)) ''; }
+
 # Operation 1: Add method after line 200 (highest line number first)
-ed -s filename.py <<'EDSCRIPT4829'
+# Uses UNQUOTED heredoc to allow $(I N) expansion
+ed -s filename.py <<EDSCRIPT4829
 H
 200a
-    def new_method(self):
-        pass
+$(I 0)def new_method(self):
+$(I 1)pass
 .
 w
 q
 EDSCRIPT4829
 
 # Verify, then Operation 2: Add item to list at line 83
-ed -s filename.py <<'EDSCRIPT4829'
+# Re-measure base indent for this location
+base=$(sed -n '83s/^\([[:space:]]*\).*/\1/p' filename.py)
+ed -s filename.py <<EDSCRIPT4829
 H
 83s/$/,/
 83a
-    NewItem
+$(I 0)NewItem
 .
 w
 q
 EDSCRIPT4829
 
 # Verify, then Operation 3: Add import at line 1
+# No indentation needed, so quoted heredoc is fine
 ed -s filename.py <<'EDSCRIPT4829'
 H
 1i
