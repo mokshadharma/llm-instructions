@@ -271,7 +271,8 @@ By default, `ed` only prints `?` on error. You **must** enable verbose error mes
 
 ### 2. The "Write-Once" Atomicity Rule
 The `w` (write) command **must appear exactly once, at the very end of the script**.
-*   **Why:** `ed` operates on an in-memory buffer. If you use `Q` (quit unconditionally) instead of `w` followed by `q`, and something goes wrong, the file on disk remains **completely untouched**. Note: assertion failures (`s/pattern/&/`) do NOT stop script execution - ed continues with subsequent commands.
+*   **Why:** `ed` operates on an in-memory buffer. Until you issue `w`, the file on disk remains untouched - this is the source of atomicity.
+*   **Warning:** Assertion failures (`s/pattern/&/`) do NOT stop script execution. Ed prints an error but continues with subsequent commands, including `w`. The exit code will be non-zero, but the file will still be written.
 *   **Benefit:** This provides "All-or-Nothing" transactional safety. If the script crashes, the file is safe.
 
 **CRITICAL LIMITATION:** This atomicity only applies *within a single script*. When using multiple scripts (each with its own `w`), the first script's successful write changes the file state. Any subsequent scripts that rely on outdated information (such as line content from earlier `rg` or `grep` output) will target the wrong content. See "Multi-Script Editing with Verification" for the mandatory verification workflow between scripts.
@@ -281,8 +282,9 @@ The `w` (write) command **must appear exactly once, at the very end of the scrip
 Even with bottom-up editing, you might target the wrong line if the file changed unexpectedly. To prevent silent failures or corruption, you **must** use Strict Contextual Anchoring for every edit.
 
 **The Technique:**
-Use the substitute command `s/pattern/&/` to assert that the target line matches a specific pattern before executing the edit.
-*   **Why:** If the pattern is not found, `ed` prints an error (`?`) but **continues executing subsequent commands**. However, ed exits with a non-zero status code, which you can check after the script completes. To truly abort on assertion failure, run the assertion in a separate ed invocation (with `Q` to quit without saving), check the exit code, and only proceed if it passed.
+Use the substitute command `s/pattern/&/` to verify you're targeting the correct line. If the pattern matches, the command succeeds silently. If not, ed prints an error.
+*   **Important:** A failed assertion does NOT stop script execution. Ed prints the error but continues with subsequent commands. The value of assertions is that ed's exit code will be non-zero, allowing you to detect problems after the script completes.
+*   **Recommended workflow:** Do one edit per ed invocation. Verify after each edit. This avoids the need for in-script assertions entirely.
 * **Note:** You must escape special regex characters (like `*`, `[`, `.`) in the pattern. Failure to escape `[` or `.` will cause `ed` to interpret them as regex classes or wildcards, leading to "No match" errors or incorrect edits.
 
 **Example:**
@@ -305,7 +307,7 @@ Assert that line 83 actually contains "Keys" before editing:
 .
 ```
 
-This ensures you don't accidentally append to the wrong list if line numbers have shifted. If line 83 does not contain "Keys", the assertion prints an error and ed exits with non-zero status - but **the subsequent commands still execute**. To prevent this, use separate ed invocations: one for the assertion (with `Q`), and only run the edit if the assertion passed.
+The assertion helps you notice if line numbers shifted - ed's exit code will be non-zero. However, the edit still executes. For true safety, use one edit per ed invocation and verify after each.
 
 **Warning: `q` vs `Q` when testing assertions**
 
@@ -395,9 +397,14 @@ python3 -m py_compile file.py || { echo "Syntax error after script 2"; exit 1; }
 **When single script is better:**
 If all line numbers can be determined from the original file state, combine all edits into one script using bottom-up ordering. This is simpler and safer than multiple scripts.
 
-**Strict anchoring is NON-OPTIONAL for multi-script edits**
+**Prefer one edit per invocation for multi-script workflows**
 
-When editing across multiple scripts, strict contextual anchoring (`s/pattern/&/`) helps detect errors via ed's non-zero exit status. However, **it does not prevent subsequent commands from executing**. If the assertion fails, ed prints an error but continues with the edit. The safest approach is to run assertions in a separate ed invocation (with `Q`) and check the exit code before proceeding.
+When making multiple edits across separate ed invocations, the safest approach is:
+1. Make one edit per ed script
+2. Verify the edit succeeded (syntax check, view the lines)
+3. Re-query line numbers before the next edit
+
+Assertions (`s/pattern/&/`) can help detect stale line numbers via ed's non-zero exit code, but they do not prevent the edit from executing. If you must combine assertion and edit in one script, check `$?` afterward and revert with `git checkout` if it failed.
 
 **Example: Safe multi-script pattern**
 ```bash
