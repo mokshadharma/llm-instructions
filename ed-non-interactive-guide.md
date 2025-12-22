@@ -28,6 +28,26 @@ When editing files programmatically, **always use `ed`**. Do not use other tools
 - `ed` provides atomic, all-or-nothing edits
 - One tool, one methodology, fewer mistakes
 
+## Pre-Edit Checklist (STOP AND READ)
+
+**Before writing ANY ed script, answer these questions:**
+
+1. **Does the content I'm inserting need indentation?**
+   - If YES: You MUST use the `I()` function with an unquoted heredoc
+   - If NO: A quoted heredoc is acceptable
+   - **Never type literal leading spaces in heredocs**
+
+2. **Does the file contain ed commands as content?** (e.g., documentation, tutorials)
+   - If YES: You MUST use sentinel prefixes (`%%`) on every inserted line
+   - See "Editing Files Containing ed Commands" section
+
+3. **Have I measured the target line's indentation?**
+   - Run: `bin/measure-indent.py LINE FILE`
+   - Record the number before proceeding
+   - Never estimate by counting spaces visually
+
+Skipping this checklist leads to failed edits and wasted time.
+
 ## The Golden Rule: Bottom-Up Editing
 
 When performing multiple edits on a single file, **always apply changes in reverse line-number order (descending)**.
@@ -810,6 +830,8 @@ EDSCRIPT4829
 | `Q`           | Quit unconditionally (no warning if buffer modified). |
 | `p`           | Print the current line (without line numbers).        |
 | `$=`          | Print the total number of lines in the buffer.        |
+
+> **For `a`, `i`, and `c` commands:** When inserting content that needs indentation, you MUST use the `I()` function with an unquoted heredoc. Never type literal leading spaces. See "Programmatic Indentation for Insertions" in The Robust Workflow section.
 
 ### Command Limitations
 
