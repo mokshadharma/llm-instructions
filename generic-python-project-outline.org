@@ -1,0 +1,134 @@
+* Python Project with Shell Wrapper Pattern
+** Project Goals and Context
+This pattern describes a Python project structure designed to be
+invoked through a lightweight shell wrapper script. The wrapper handles
+environment setup and path resolution while the Python code contains
+the actual logic.
+** Target Use Case
+Best suited for command-line tools where users expect simple shell
+command invocation but the implementation benefits from Python's
+structure and ecosystem.
+** Key Design Principles
+*** Separation of Concerns
+The shell wrapper handles only filesystem operations, environment
+activation, and invocation. All business logic resides in Python.
+*** User Experience Priority
+Users interact with a simple shell command. They need not know about
+virtual environments, module paths, or Python-specific details.
+*** Development Quality Tools
+The project includes type checking and linting configured for strict
+enforcement to maintain code quality.
+** Project Structure
+*** Source Layout Pattern
+Use the src layout with package directory under src folder. This
+prevents import confusion and follows modern Python packaging best
+practices.
+*** Package Location
+Place the main package at src/packagename/ with __init__.py and other
+modules. This structure supports proper editable installation.
+*** Shell Wrapper Location
+Place the wrapper script in bin/ directory at project root. This
+separates user-facing scripts from source code.
+*** Configuration Files at Root
+Keep pyproject.toml, Makefile, and tool configurations at project
+root for standard tooling discovery.
+** Shell Wrapper Requirements
+*** Symlink Resolution
+The wrapper supports two deployment scenarios: direct execution from
+the project directory (./bin/command) and execution via symlink from a
+directory in PATH (e.g., ~/bin/command -> project/bin/command). It uses
+realpath to resolve symlinks and find the project root directory
+regardless of invocation location or symlink depth.
+*** Working Directory Preservation
+The wrapper must preserve the user's current working directory context
+for resolving relative paths in arguments.
+*** Virtual Environment Activation
+The wrapper activates the project's virtual environment before invoking
+Python code to ensure dependencies are available.
+*** Path Resolution Strategy
+Relative file paths provided by users are resolved to absolute paths
+based on the caller's working directory before passing to Python.
+*** Module Invocation Method
+The wrapper invokes Python code using the -m flag with the package
+name, relying on editable installation for proper import resolution.
+** Python Code Organization
+*** Configuration Management
+Use module-level constants with type annotations for fixed values.
+Document each constant with comments explaining its purpose. Implement
+derived values as functions that take configuration parameters and
+return assembled results. CLI options via click can override defaults.
+*** Type Annotations
+Use comprehensive type hints throughout with Python 3.10+ syntax for
+cleaner code. Avoid Any types unless absolutely necessary.
+*** Function Design
+Write short single-purpose functions with clear docstrings explaining
+purpose, inputs, and outputs. Prefer functional style where possible.
+*** Argument Parsing
+Use click library for command-line argument handling with automatic
+help generation. Click provides a cleaner decorator-based interface
+than argparse and handles validation with sensible defaults.
+*** Error Handling
+Implement graceful keyboard interrupt handling that exits with code 1
+without printing error messages. Click handles usage errors (missing
+or invalid arguments) with exit code 2, which follows Unix conventions.
+*** Lazy Imports
+Stage imports for fast startup response. At module level, import only
+click and minimal standard library. Heavy imports (subprocess calls,
+external tool invocations) should occur inside functions after argument
+validation. This ensures --help and usage errors respond instantly.
+*** Module Entry Point
+Create a thin __main__.py that imports and calls the main function.
+The click-decorated command should reside in main.py. main.py must
+only import click at module level to preserve fast-path behavior.
+** Development Tools Configuration
+*** Type Checker Selection
+Configure mypy with strict settings to enforce type annotation
+requirements and catch type errors during development.
+*** Linter Configuration
+Use ruff for fast linting and code formatting checks with appropriate
+rule sets for the project style.
+*** Makefile for Common Tasks
+Provide a Makefile with targets for mypy, ruff, ruff-fix, and test. The
+test target must depend on ruff first, then mypy second. The default
+target should list all available user-facing rules.
+*** Editable Installation
+Configure pyproject.toml to support uv pip install -e . for
+development workflow with immediate code changes reflected.
+** Configuration File Details
+*** pyproject.toml Minimum Requirements
+Specify project name, version, requires-python constraint, and
+dependencies. Include click as a runtime dependency. Include dev
+dependencies for mypy and ruff.
+*** mypy Configuration Approach
+Configure mypy in pyproject.toml or dedicated config file with strict
+mode enabled to enforce all type checking rules.
+*** ruff Configuration Approach
+Configure ruff in pyproject.toml with selected rule sets and any
+project-specific exceptions or exclusions.
+** Python Version Targeting
+*** Modern Python Features
+Target Python 3.10 or newer to use modern type annotation syntax
+without imports from typing module for basic types.
+*** Union Type Syntax
+Use pipe operator for unions and None instead of Optional or Union
+imports for cleaner type hints.
+*** Generic Type Syntax
+Use lowercase built-in generic syntax like list[str] and dict[str, int]
+instead of importing List and Dict from typing.
+** Best Practices Summary
+*** Documentation at File Level
+Begin Python files with shebang, purpose comment, and usage information
+so files are self-documenting.
+*** Docstring Coverage
+Every function and class must have docstrings explaining purpose,
+parameters, return values, and any side effects.
+*** Explicit Type Declarations
+When variables can hold different types based on runtime conditions,
+use explicit Union types rather than relying on inference.
+*** Testing Considerations
+Structure code to be testable with dependency injection and pure
+functions where possible. Keep IO separate from logic.
+*** Output Destinations
+Error messages go to stderr. Help output (--help) goes to stdout to
+allow piping to pagers. Click handles usage errors to stderr with exit
+code 2. Application-specific errors exit with code 1.
