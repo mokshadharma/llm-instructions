@@ -82,3 +82,7 @@ Before instrumenting code with debug statements, read the source of the componen
 When debugging, you hold implicit assumptions about data formats, value ranges, and component behavior. These assumptions are often wrong.
 *** Principle: Unexamined assumptions are the primary source of wasted debugging time. Making them explicit forces verification.
 *** Action: Before deep-diving, list your assumptions as checkboxes. Verify each one with evidence before proceeding.
+** 20. When "No Response," Ask About Timing First
+If a system appears unresponsive, ask when (not just what) output appears. Buffering issues are invisible if you only examine content.
+*** Principle: "No response" often means "delayed response due to buffering." Output that appears only after process exit, window close, or timeout indicates a pipe, stream, or I/O buffering problem - not a logic error.
+*** Action: When something "doesn't respond," immediately ask: "Does output appear instantly, or only after closing/exiting?" If delayed, investigate buffering at I/O boundaries (pipes, sockets, streams) before debugging application logic.
