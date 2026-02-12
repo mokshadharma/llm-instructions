@@ -502,19 +502,6 @@ $(I 0)NewItem
 ```
 This works perfectly in reverse order because the `a` command inserts *after* the target line, so line 83 remains stable for the substitution.
 
-### Atomic Scripts
-Always use a single `ed` invocation containing **one operation**. Use a **Quoted Heredoc** (`<<'EDSCRIPT4829'`) for content without leading whitespace, or an **Unquoted Heredoc** (`<<EDSCRIPT4829`) when using `$(I N)` for indentation. This ensures the file is opened and written only once, prevents race conditions, and handles special characters safely.
-
-```bash
-# Good: One operation per invocation
-ed -s file <<'EDSCRIPT4829'
-H
-50s/old/new/
-w
-q
-EDSCRIPT4829
-```
-
 ### Heredoc Delimiter Conflicts
 
 If the content you're inserting contains your heredoc delimiter, the script will terminate prematurely and fail.
