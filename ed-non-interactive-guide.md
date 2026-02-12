@@ -495,6 +495,30 @@ If the assertion failed, `$?` will be non-zero after the script completes. The e
 
 ## Robust Editing Patterns
 
+### Global Substitution with `g`
+
+When you need to rename a symbol or replace a string across an entire file, the global command `g` is safer and more efficient than tracking individual line numbers. It performs all replacements atomically in a single pass with no line-number bookkeeping.
+
+```bash
+ed -s file.py <<'EDSCRIPT'
+H
+g/old_function/s//new_function/g
+w
+q
+EDSCRIPT
+```
+
+**When to use `g`:**
+- Renaming a variable, function, or class across the entire file
+- Any "find and replace all" operation where every match should be changed
+
+**When NOT to use `g`:**
+- When only specific occurrences should change (e.g., line 50 but not line 80)
+- When different matches need different replacements
+- For structural edits (inserting, deleting, or moving lines)
+
+For those cases, continue using targeted line-number edits with one operation per invocation in bottom-up order.
+
 ### Comma Safety
 When appending items to lists or dictionaries in code, the previous line might be missing a trailing comma.
 
