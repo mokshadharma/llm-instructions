@@ -849,6 +849,7 @@ EDSCRIPT4829
 | `START,ENDd`  | Delete lines START through END (inclusive).             |
 | `s/old/new/`  | Substitute text on the current line.                    |
 | `m`           | Move line(s) to after another line.                     |
+| `t`           | Copy (transfer) line(s) to after another line.          |
 | `w`           | Write changes to disk.                                  |
 | `q`           | Quit.                                                   |
 | `Q`           | Quit unconditionally (no warning if buffer modified). |
