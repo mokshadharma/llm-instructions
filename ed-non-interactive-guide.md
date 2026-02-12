@@ -851,16 +851,7 @@ EDSCRIPT4829
 
 To delete a block of consecutive lines, use a **range delete** - not individual line deletions.
 
-**Wrong Way (inefficient):**
-```bash
-# Deleting lines 50-55 one at a time (wasteful, error-prone)
-55d
-54d
-53d
-52d
-51d
-50d
-```
+Don't delete lines individually (`55d`, `54d`, `53d`, ...) when they're contiguous — use a range instead.
 
 **Right Way:**
 ```bash
