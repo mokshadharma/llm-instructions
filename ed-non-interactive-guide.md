@@ -1136,4 +1136,3 @@ When an edit produces invalid syntax or incorrect results:
 - Repeating same verification commands without progress
 
 **Key insight:** Patching a broken edit with more edits can work, but if you find yourself making multiple correction attempts without success, a clean revert + redesign is faster and safer than continued patching.
-
