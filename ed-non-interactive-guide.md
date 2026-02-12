@@ -336,8 +336,8 @@ By default, `ed` only prints `?` on error. You **must** enable verbose error mes
 ### 2. The "Write-Once" Atomicity Rule
 The `w` (write) command **must appear exactly once, at the very end of the script**.
 *   **Why:** `ed` operates on an in-memory buffer. Until you issue `w`, the file on disk remains untouched - this is the source of atomicity.
-*   **Warning:** Assertion failures (`s/pattern/&/`) do NOT stop script execution. Ed prints an error but continues with subsequent commands, including `w`. The exit code will be non-zero, but the file will still be written.
-*   **Benefit:** If the script crashes (e.g., ed is killed), the file is safe because nothing was written. However, if the script completes, `w` always executes - even after assertion failures.
+*   **Warning:** Assertion failures do not stop execution - `w` still runs. See "Why One Operation Per Invocation?" for details.
+*   **Benefit:** If the script crashes (e.g., ed is killed), the file is safe because nothing was written.
 
 **CRITICAL LIMITATION:** This atomicity only applies *within a single script*. When using multiple scripts (each with its own `w`), the first script's successful write changes the file state. Any subsequent scripts that rely on outdated information (such as line content from earlier `rg` or `grep` output) will target the wrong content. See "Multi-Script Editing with Verification" for the mandatory verification workflow between scripts.
 
@@ -351,7 +351,7 @@ Even with bottom-up editing, you might target the wrong line if the file changed
 
 **The Technique:**
 Use the substitute command `s/pattern/&/` to verify you're targeting the correct line. If the pattern matches, the command succeeds silently. If not, ed prints an error.
-*   **Important:** A failed assertion does NOT stop script execution. Ed prints the error but continues with subsequent commands. The value of assertions is that ed's exit code will be non-zero, allowing you to detect problems after the script completes.
+*   **Important:** Failed assertions do not stop execution (see "Why One Operation Per Invocation?"). Their value is making ed's exit code non-zero.
 *   **Recommended workflow:** Do one operation per ed invocation (an operation can insert/delete/change multiple lines, but is a single ed command). Verify after each. This avoids the need for in-script assertions entirely.
 * **Note:** You must escape special regex characters (like `*`, `[`, `.`) in the pattern. Failure to escape `[` or `.` will cause `ed` to interpret them as regex classes or wildcards, leading to "No match" errors or incorrect edits.
 
@@ -375,7 +375,7 @@ $(I 0)NewItem
 .
 ```
 
-The assertion helps you notice if line numbers shifted - ed's exit code will be non-zero. However, the edit still executes. For true safety, use one operation per ed invocation and verify after each.
+The assertion helps detect shifted line numbers via ed's non-zero exit code, but does not prevent the edit from executing.
 
 **Warning: `q` vs `Q` when testing assertions**
 
@@ -474,7 +474,7 @@ The safest approach for any editing task:
 2. Verify the edit succeeded (syntax check, view the lines)
 3. Re-query line numbers before the next edit
 
-Assertions (`s/pattern/&/`) can help detect stale line numbers via ed's non-zero exit code, but they do not prevent the edit from executing. If you must combine assertion and edit in one script, check `$?` afterward and revert with `git checkout` if it failed.
+Assertions (`s/pattern/&/`) can help detect stale line numbers via ed's non-zero exit code, but do not prevent edits from executing (see "Why One Operation Per Invocation?"). Check `$?` afterward and revert with `git checkout` if it failed.
 
 **Example: Assertion with edit (less safe - edit runs even if assertion fails)**
 ```bash
@@ -491,7 +491,7 @@ q
 EDSCRIPT2847
 ```
 
-If the assertion failed, `$?` will be non-zero after the script completes. The edit still executed, so you may need to revert with `git checkout` and retry. This is why one-operation-per-invocation is safer.
+If the assertion failed, revert with `git checkout` and retry (assertions do not prevent edits from executing - see "Why One Operation Per Invocation?").
 
 ## Robust Editing Patterns
 
