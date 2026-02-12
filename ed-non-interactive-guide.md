@@ -856,6 +856,7 @@ EDSCRIPT4829
 | `p`           | Print the current line (without line numbers).        |
 | `l`           | List lines unambiguously (shows `\t`, trailing spaces, `$` at EOL). |
 | `$=`          | Print the total number of lines in the buffer.        |
+| `#`           | Comment; the rest of the line is ignored (GNU extension). |
 
 > **For `a`, `i`, and `c` commands:** When inserting content that needs indentation, you MUST use the `I()` function with an unquoted heredoc. Never type literal leading spaces. See "Programmatic Indentation for Insertions" in The Robust Workflow section.
 
