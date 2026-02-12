@@ -371,7 +371,7 @@ The assertion helps detect shifted line numbers via ed's non-zero exit code (see
 
 **Warning: `q` vs `Q` when testing assertions**
 
-When using `s/pattern/&/` to *test* whether a line matches (without intending to write), the substitution modifies the buffer even though the content is unchanged. If you then use `q` (quit), `ed` will refuse to exit and report "Warning: buffer modified" with exit code 1.
+When using `s/pattern/&/` to *test* whether a line matches (without intending to write), the substitution modifies the buffer even though the content is unchanged. This is expected `ed` behavior, not an error in your pattern. If you then use `q` (quit), `ed` will refuse to exit and report "Warning: buffer modified" with exit code 1.
 
 **Solutions:**
 - **For verification only:** Use `Q` (uppercase) to quit unconditionally without saving:
@@ -383,8 +383,6 @@ When using `s/pattern/&/` to *test* whether a line matches (without intending to
   EDSCRIPT4829
   ```
 - **For actual edits:** Continue to use `q` after `w` (write) as normal - the warning only occurs when quitting a modified-but-not-written buffer.
-
-**Key insight:** The `s/pattern/&/` command *always* marks the buffer as modified, even when replacing text with itself. This is expected behavior, not an error in your pattern.
 
 ## Multi-Script Editing with Verification
 
