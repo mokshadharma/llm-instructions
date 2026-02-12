@@ -149,14 +149,7 @@ bin/measure-indent.py 47 myfile.py
 
 **Record the indentation number before proceeding.** Use exactly that many spaces for sibling lines, or add the file's indent width for child blocks.
 
-**Common Failure Mode:**
-```bash
-# You think: "it's inside a try block in a function, so probably 12 spaces"
-# Reality: it's 8 spaces
-# Result: IndentationError, multiple retry attempts, wasted time
-```
-
-Guessing indentation WILL fail. Measuring takes 5 seconds. Fixing failed edits takes minutes.
+**Common Failure Mode:** Guessing indentation WILL fail (e.g., you assume 12 spaces but it's actually 8). Measuring takes 5 seconds. Fixing failed edits takes minutes.
 
 ### Programmatic Indentation for Insertions
 
