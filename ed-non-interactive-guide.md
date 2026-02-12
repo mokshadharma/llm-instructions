@@ -397,15 +397,7 @@ After a script writes (`w`), all prior context about the file is potentially sta
 - Line content may have changed
 - Output from earlier `rg`, `grep`, or `ed` queries no longer reflects reality
 
-**The failure pattern:**
-1. You query the file and note line numbers/content
-2. Script 1 runs successfully and writes
-3. You run Script 2 using the *original* query results
-4. Script 2 fails or corrupts the file because line 50 no longer contains what you expected
-
 **The solution:** After every `w`, you MUST re-query the file before constructing the next script. Never reuse stale context.
-
-When making multiple edits across several `ed` invocations (each with its own `w`), verification between scripts is critical to maintain accuracy.
 
 **Mandatory verification after each script:**
 1. Verify the exact change with `ed -s FILE <<< 'H\nSTART,ENDn'`
