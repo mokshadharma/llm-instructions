@@ -349,11 +349,11 @@ The `w` (write) command **must appear exactly once, at the very end of the scrip
 1. For substitution edits (`s/old/new/`): if the anchor fails, the edit also won't find `old`, so nothing changes - no corruption
 2. For all edits: ed exits with non-zero status, signaling something went wrong
 
-Even with bottom-up editing, you might target the wrong line if the file changed unexpectedly. Assertions help detect this, but they do **not** prevent subsequent commands from executing (see warnings below).
+Even with bottom-up editing, you might target the wrong line if the file changed unexpectedly. Assertions help detect this (see "Why One Operation Per Invocation?").
 
 **The Technique:**
 Use the substitute command `s/pattern/&/` to verify you're targeting the correct line. If the pattern matches, the command succeeds silently. If not, ed prints an error.
-*   **Important:** Failed assertions do not stop execution (see "Why One Operation Per Invocation?"). Their value is making ed's exit code non-zero.
+*   **Important:** Failed assertions do not stop execution — their value is making ed's exit code non-zero. See "Why One Operation Per Invocation?".
 *   **Recommended workflow:** Do one operation per ed invocation (an operation can insert/delete/change multiple lines, but is a single ed command). Verify after each. This avoids the need for in-script assertions entirely.
 * **Note:** You must escape special regex characters (like `*`, `[`, `.`) in the pattern. Failure to escape `[` or `.` will cause `ed` to interpret them as regex classes or wildcards, leading to "No match" errors or incorrect edits.
 
@@ -377,7 +377,7 @@ $(I 0)NewItem
 .
 ```
 
-The assertion helps detect shifted line numbers via ed's non-zero exit code, but does not prevent the edit from executing.
+The assertion helps detect shifted line numbers via ed's non-zero exit code (see "Why One Operation Per Invocation?").
 
 **Warning: `q` vs `Q` when testing assertions**
 
@@ -467,7 +467,7 @@ python3 -m py_compile file.py || { echo "Syntax error after script 2"; exit 1; }
 
 **Key principle:** After each `w` (write), the file state has changed. Subsequent scripts must account for line number shifts from previous edits. Verification catches errors before they accumulate.
 
-Assertions (`s/pattern/&/`) can help detect stale line numbers via ed's non-zero exit code, but do not prevent edits from executing (see "Why One Operation Per Invocation?"). Check `$?` afterward and revert with `git checkout` if it failed.
+Assertions (`s/pattern/&/`) can help detect stale line numbers via ed's non-zero exit code (see "Why One Operation Per Invocation?"). Check `$?` afterward and revert with `git checkout` if it failed.
 
 **Example: Assertion with edit (less safe - edit runs even if assertion fails)**
 ```bash
@@ -484,7 +484,7 @@ q
 EDSCRIPT2847
 ```
 
-If the assertion failed, revert with `git checkout` and retry (assertions do not prevent edits from executing - see "Why One Operation Per Invocation?").
+If the assertion failed, revert with `git checkout` and retry (see "Why One Operation Per Invocation?").
 
 ## Robust Editing Patterns
 
