@@ -330,6 +330,18 @@ python3 -m json.tool FILE > /dev/null && echo "Valid JSON"
 ```
 This catches errors early when they're easiest to fix, before additional edits create cascading problems.
 
+**Do not rely on IDE file-reading tools** (like VS Code's `read_file`) for verification, as they may return cached/stale content that doesn't reflect recent external changes. Always verify with `ed` or terminal commands.
+
+**Why `ed` over shell tools for verification?**
+- `cat` - dumps entire file, no line numbers, can be huge
+- `sed -n 'Np'` - no line numbers
+- `ed` with `n` - gives exact lines with their line numbers, confirming both content and position
+
+**Get line count:**
+```bash
+wc -l < filename.py
+```
+
 ### 1. Verbose Error Messages (`H`)
 By default, `ed` only prints `?` on error. You **must** enable verbose error messages to debug failures effectively.
 *   **The Fix:** Always start your script with the `H` command.
@@ -1008,43 +1020,6 @@ H
 225,$n
 EDSCRIPT4829
 ```
-
-### Verify Edits with `ed` (Not `read_file`)
-
-After editing a file with `ed`, always verify using `ed` itself or terminal commands. **Do not rely on IDE file-reading tools** (like VS Code's `read_file`), as they may return cached/stale content that doesn't reflect recent external changes.
-
-**Use `ed` with the `n` command for targeted verification:**
-```bash
-# Print lines 50-60 with line numbers
-ed -s file.py <<'EDSCRIPT4829'
-H
-50,60n
-EDSCRIPT4829
-
-# Print from line 225 to end of file
-ed -s file.py <<'EDSCRIPT4829'
-H
-225,$n
-EDSCRIPT4829
-
-# Print last 10 lines with line numbers
-ed -s file.py <<'EDSCRIPT4829'
-H
-$-9,$n
-EDSCRIPT4829
-```
-
-**Why `ed` over shell tools?**
-- `cat` - dumps entire file, no line numbers, can be huge
-- `head`/`tail` - no line numbers, requires mental math to determine positions
-- `sed -n 'Np'` - no line numbers
-- `ed` with `n` - gives exact lines with their line numbers, confirming both content and position
-
-**Get line count:**
-```bash
-wc -l < filename.py
-```
-
 ## Troubleshooting
 
 Common errors and their causes:
