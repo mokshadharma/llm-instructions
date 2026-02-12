@@ -63,27 +63,7 @@ When performing multiple edits on a single file, **always apply changes in rever
 
 When you have multiple operations to perform, execute them as separate ed invocations, starting with the highest line number:
 
-**Wrong Way (Top-Down order):**
-```bash
-# Operation 1: Insert at line 1 (shifts everything down)
-ed -s file.py <<'EDSCRIPT1234'
-H
-1i
-import os
-.
-w
-q
-EDSCRIPT1234
-
-# Operation 2: Edit line 50 - BUT line 50 is now line 51!
-ed -s file.py <<'EDSCRIPT4829'
-H
-50s/old/new/
-w
-q
-EDSCRIPT4829
-```
-**Result:** Line 50 edit targets wrong line. **FAILED.**
+**Wrong Way (Top-Down order):** If you insert at line 1 first, everything below shifts down by one — so your next edit targeting line 50 actually hits the original line 49. **FAILED.**
 
 **Right Way (Bottom-Up order):**
 ```bash
