@@ -1,5 +1,7 @@
 # Robust Non-Interactive Editing with `ed`
 
+> **IMPORTANT: Read this entire document from start to finish — every single line — before performing any file edits. Do not skip sections or skim. Every rule and technique described here is essential to avoiding failed edits.**
+
 This guide outlines a fail-safe methodology for programmatically editing files using the `ed` line editor. By following these strict procedures, you can eliminate common errors like shifting line numbers and broken syntax.
 
 ## Quick Reference (TL;DR)
@@ -1136,3 +1138,4 @@ When an edit produces invalid syntax or incorrect results:
 - Repeating same verification commands without progress
 
 **Key insight:** Patching a broken edit with more edits can work, but if you find yourself making multiple correction attempts without success, a clean revert + redesign is faster and safer than continued patching.
+
