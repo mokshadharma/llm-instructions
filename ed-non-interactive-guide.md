@@ -227,8 +227,6 @@ EDSCRIPT4829
 
 ### 2. Script: Construct the Edit (One Operation Per Invocation)
 
-**CRITICAL: For any insertion with indentation, you MUST use programmatic indentation.** See the "Programmatic Indentation for Insertions" section above. Never type literal leading whitespace in heredocs.
-
 - **Unquoted heredoc** (`<<EDSCRIPT4829`): Required when using `$(I N)` for indentation
 - **Quoted heredoc** (`<<'EDSCRIPT4829'`): Only for content with no leading whitespace (e.g., imports at column 0)
 
