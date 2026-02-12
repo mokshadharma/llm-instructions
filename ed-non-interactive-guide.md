@@ -17,9 +17,11 @@ This guide outlines a fail-safe methodology for programmatically editing files u
 
 > **WARNING: NEVER type literal leading whitespace in heredocs.** All indentation must come from the `$(I N)` function. See "Programmatic Indentation for Insertions" below.
 
-## Always Use `ed` for File Reading and Editing
+## Always Use `ed` for File Reading, Editing, and Creation
 
 When reading or editing files programmatically, **always use `ed`**. Do not use other tools like `sed`, `cat`, `replace_string_in_file`, `multi_replace_string_in_file`, or similar alternatives. The requirement to use `ed` for reading and editing overrides all other file-related instructions.
+
+`ed` can also create new files. When you open a non-existent file, `ed` prints a warning (e.g., `file.py: No such file or directory`) — this is expected and should be ignored. After inserting content and writing with `w`, the file is created.
 
 **Why?**
 - The workflow requires discovering exact line numbers before editing, which forces you to verify the current file state
