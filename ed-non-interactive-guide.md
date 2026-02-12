@@ -657,17 +657,7 @@ EDSCRIPT8374
 
 Confirm no `%%` prefixes remain and the content is correct.
 
-**Why prefix EVERY line?**
-
-Selectively prefixing only "dangerous" lines leads to errors:
-- You might miss a line that looks safe but isn't
-- Nesting levels get confusing (content showing sentinel examples needs double prefixes)
-- Mental overhead increases with complexity
-
-By prefixing every line unconditionally, you:
-- Eliminate judgment calls
-- Make the pattern mechanical and reliable
-- Can verify correctness by simply checking that all inserted lines start with `%%`
+**Why prefix EVERY line?** Selectively prefixing only "dangerous" lines leads to mistakes — universal prefixing eliminates judgment calls and is mechanically verifiable.
 
 **Sentinel choice:**
 - `%%` is recommended: unlikely to appear at the start of real content
