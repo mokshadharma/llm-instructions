@@ -17,8 +17,6 @@ This guide outlines a fail-safe methodology for programmatically editing files u
 
 > **WARNING: NEVER type literal leading whitespace in heredocs.** All indentation must come from the `$(I N)` function. See "Programmatic Indentation for Insertions" below.
 
-
-
 ## Always Use `ed` for File Reading and Editing
 
 When reading or editing files programmatically, **always use `ed`**. Do not use other tools like `sed`, `cat`, `replace_string_in_file`, `multi_replace_string_in_file`, or similar alternatives. The requirement to use `ed` for reading and editing overrides all other file-related instructions.
@@ -1027,4 +1025,3 @@ When an edit produces invalid syntax or incorrect results:
 - Repeating same verification commands without progress
 
 **Key insight:** Patching a broken edit with more edits can work, but if you find yourself making multiple correction attempts without success, a clean revert + redesign is faster and safer than continued patching.
-
