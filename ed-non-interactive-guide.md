@@ -927,27 +927,8 @@ EDSCRIPT4829
 ```
 
 ### Don't Combine Discovery with Assumptions
-Never issue multiple commands in one script where a later command depends on assumptions about output you haven't seen yet.
+Never issue multiple commands in one script where a later command depends on assumptions about output you haven't seen yet. For example, don't combine `$=` with a hardcoded range in the same invocation — get the length first, then query in a separate invocation using `$` addressing as shown above.
 
-```bash
-# WRONG: Assumes 236 exists based on nothing
-ed -s file.py <<'EDSCRIPT4829'
-H
-$=
-225,236n
-EDSCRIPT4829
-
-# RIGHT: Get length first, then query in a second invocation
-ed -s file.py <<'EDSCRIPT4829'
-H
-$=
-EDSCRIPT4829
-# Now you know it's 235 lines, so query accordingly:
-ed -s file.py <<'EDSCRIPT4829'
-H
-225,$n
-EDSCRIPT4829
-```
 ## Troubleshooting
 
 Common errors and their causes:
