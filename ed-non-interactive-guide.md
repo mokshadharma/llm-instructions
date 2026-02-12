@@ -396,50 +396,6 @@ After a script writes (`w`), all prior context about the file is potentially sta
 3. Run syntax checker (`python3 -m py_compile`, etc.)
 4. Only proceed to the next script if all checks pass
 
-**Example of verified multi-script editing:**
-```bash
-# Script 1: Add import at top
-ed -s file.py <<'EDSCRIPT4829'
-H
-1i
-import os
-.
-w
-q
-EDSCRIPT4829
-
-# VERIFY before continuing
-ed -s file.py <<'EDSCRIPT1920'
-H
-1,3n
-EDSCRIPT1920
-# Confirm import present at line 1
-
-python3 -m py_compile file.py || { echo "Syntax error after script 1"; exit 1; }
-
-# Script 2: Add function at bottom
-# Line numbers from original file are now shifted by +1
-# Must account for the import insertion
-# Using unquoted heredoc for $(I N) - base is empty string for column 0
-base=""
-unit=4
-I() { printf '%s%*s' "$base" $(($1*unit)) ''; }
-
-ed -s file.py <<EDSCRIPT3847
-H
-$a
-
-$(I 0)def new_function():
-$(I 1)pass
-.
-w
-q
-EDSCRIPT3847
-
-# VERIFY again
-python3 -m py_compile file.py || { echo "Syntax error after script 2"; exit 1; }
-```
-
 **Key principle:** After each `w` (write), the file state has changed. Subsequent scripts must account for line number shifts from previous edits. Verification catches errors before they accumulate.
 
 Assertions (`s/pattern/&/`) can help detect stale line numbers via ed's non-zero exit code (see "Why One Operation Per Invocation?"). Check `$?` afterward and revert with `git checkout` if it failed.
