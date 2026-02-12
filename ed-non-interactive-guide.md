@@ -721,22 +721,7 @@ After running `s/^%%//` on the inserted line:
 2. If YES: You MUST use unquoted heredoc + `I()` function
 3. If NO: Quoted heredoc is acceptable
 
-**Common mistake:** Using literal spaces in a quoted heredoc for indented code
-```bash
-# WRONG: Literal spaces will be mangled or inconsistent
-ed -s file.py <<'EDSCRIPT4829'
-H
-$a
-
-def my_function():
-    return True  # These literal spaces are fragile
-.
-w
-q
-EDSCRIPT4829
-```
-
-The correct approach uses `I()` with an unquoted heredoc - see examples below.
+**Common mistake:** Never use literal spaces in a quoted heredoc for indented code — the indentation will be fragile and inconsistent. Use `I()` with an unquoted heredoc instead (see examples below).
 
 **Quoted heredoc (`<<'EDSCRIPT4829'`):**
 - **Use for:** Inserting content at column 0 (no leading whitespace) that contains special characters
@@ -797,18 +782,7 @@ q
 EDSCRIPT4829
 ```
 
-**Common mistake:** Using `$(I 0)` inside a quoted heredoc
-```bash
-# WRONG: $(I 0) appears literally in file
-ed -s file.py <<'EDSCRIPT4829'
-H
-10a
-$(I 0)def example():  # This is LITERAL text: "$(I 0)def example():"
-.
-w
-q
-EDSCRIPT4829
-```
+**Common mistake:** Never use `$(I 0)` inside a quoted heredoc — it will appear as literal text in the file, not as indentation.
 
 **Decision flowchart:**
 1. Does your insertion need shell variable expansion (like `$(I 0)`)? → Use UNQUOTED `<<EDSCRIPT`
