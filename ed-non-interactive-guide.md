@@ -114,6 +114,8 @@ Ed does **not** abort on error. If an assertion or edit fails, ed prints an erro
 
 With one operation per invocation, you can verify and stop between operations if something goes wrong.
 
+An operation can affect multiple lines (e.g., inserting 10 lines is one operation), but a single ed invocation should not contain unrelated edits (e.g., inserting 5 lines then deleting 3 elsewhere is two operations).
+
 ## The Robust Workflow
 
 ### 1. Locate AND Measure (REQUIRED BEFORE AND AFTER EDITING)
@@ -466,13 +468,6 @@ python3 -m py_compile file.py || { echo "Syntax error after script 2"; exit 1; }
 ```
 
 **Key principle:** After each `w` (write), the file state has changed. Subsequent scripts must account for line number shifts from previous edits. Verification catches errors before they accumulate.
-
-**Always use one operation per ed invocation**
-
-The safest approach for any editing task:
-1. Make one operation per ed script (inserting 10 lines is one operation; inserting 5 lines then deleting 3 elsewhere is two)
-2. Verify the edit succeeded (syntax check, view the lines)
-3. Re-query line numbers before the next edit
 
 Assertions (`s/pattern/&/`) can help detect stale line numbers via ed's non-zero exit code, but do not prevent edits from executing (see "Why One Operation Per Invocation?"). Check `$?` afterward and revert with `git checkout` if it failed.
 
