@@ -891,39 +891,7 @@ q
 EDSCRIPT4829
 ```
 
-**Solution 2: Delete and reinsert in new order (multiple operations - less safe)**
-
-This approach requires multiple operations. For maximum safety, use separate invocations:
-```bash
-# First, note the content of lines 10 and 11 before editing
-
-# Delete line 11 first (bottom-up)
-ed -s file.md <<'EDSCRIPT4829'
-H
-11d
-w
-q
-EDSCRIPT4829
-
-# Delete line 10 (now at original position since we deleted below)
-ed -s file.md <<'EDSCRIPT4829'
-H
-10d
-w
-q
-EDSCRIPT4829
-
-# Insert in new order after line 9
-ed -s file.md <<'EDSCRIPT4829'
-H
-9a
-| TASK-029 | (content from original line 11) |
-| TASK-030 | (content from original line 10) |
-.
-w
-q
-EDSCRIPT4829
-```
+**Alternative:** If `m` doesn't fit your case, use bottom-up `d` (delete) combined with `a`/`i` (append/insert) to remove and reinsert lines in the desired order.
 
 **Recommendation:** Prefer Solution 1 (`m` command) when possible - it's a single operation.
 
