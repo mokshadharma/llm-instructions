@@ -854,6 +854,7 @@ EDSCRIPT4829
 | `q`           | Quit.                                                   |
 | `Q`           | Quit unconditionally (no warning if buffer modified). |
 | `p`           | Print the current line (without line numbers).        |
+| `l`           | List lines unambiguously (shows `\t`, trailing spaces, `$` at EOL). |
 | `$=`          | Print the total number of lines in the buffer.        |
 
 > **For `a`, `i`, and `c` commands:** When inserting content that needs indentation, you MUST use the `I()` function with an unquoted heredoc. Never type literal leading spaces. See "Programmatic Indentation for Insertions" in The Robust Workflow section.
@@ -1094,6 +1095,15 @@ Common errors and their causes:
 | `Warning: buffer modified` | Used `q` after modifying without `w` | Use `Q` to quit unconditionally, or add `w` before `q` |
 | `Invalid command suffix` | Wrong syntax in command | Check command format (e.g., `s/old/new/` needs both delimiters) |
 | File unchanged after script | Script failed before `w` command | Check exit code; review verbose error output |
+
+**Debugging whitespace issues:** If `n` and `bin/measure-indent.py` don't explain an indentation or whitespace problem, use the `l` command to see lines unambiguously. It reveals tabs (`\t`), trailing spaces, and marks end-of-line with `$`:
+```bash
+ed -s file.py <<'EDSCRIPT'
+H
+50l
+Q
+EDSCRIPT
+```
 
 ### Special Characters That Need Escaping in Patterns
 
