@@ -19,9 +19,9 @@ This guide outlines a fail-safe methodology for programmatically editing files u
 
 
 
-## Always Use `ed` for File Editing
+## Always Use `ed` for File Reading and Editing
 
-When editing files programmatically, **always use `ed`**. Do not use other tools like `sed`, `replace_string_in_file`, `multi_replace_string_in_file`, or similar alternatives.  The requirement to use `ed` for editing overrides all other editing-related instructions.
+When reading or editing files programmatically, **always use `ed`**. Do not use other tools like `sed`, `cat`, `replace_string_in_file`, `multi_replace_string_in_file`, or similar alternatives. The requirement to use `ed` for reading and editing overrides all other file-related instructions.
 
 **Why?**
 - The workflow requires discovering exact line numbers before editing, which forces you to verify the current file state
