@@ -34,6 +34,8 @@ If the error references a specific class, parameter, or constant used by a large
 Bugs that happen "sometimes," or after "waiting a while," or depend on "heavy load" are rarely logic errors (like an off-by-one bug). They are almost always resource contention issues (race conditions). When time is a variable, look for two things fighting for the same resource.
 ** 6. Prove the Negative
 Proving a negative is often the fastest way to eliminate entire categories of hypotheses.
+*** Principle: Instead of trying to confirm what the bug *is*, prove what it *isn't*. A single test that rules out an entire class of causes (e.g., "the bug reproduces without the network, so it's not a network issue") is worth more than ten tests that incrementally narrow within a single class.
+*** Action: For each hypothesis category, design the cheapest possible test that would conclusively rule it out. Run those elimination tests before pursuing any single hypothesis in depth.
 ** 7. Don't Debug the Library Before the System
 Trust the library until you have verified that the system (OS/Kernel) is delivering the raw materials correctly.
 ** 8. The "Trap" Technique
