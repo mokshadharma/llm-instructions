@@ -86,3 +86,17 @@ When debugging, you hold implicit assumptions about data formats, value ranges, 
 If a system appears unresponsive, ask when (not just what) output appears. Buffering issues are invisible if you only examine content.
 *** Principle: "No response" often means "delayed response due to buffering." Output that appears only after process exit, window close, or timeout indicates a pipe, stream, or I/O buffering problem - not a logic error.
 *** Action: When something "doesn't respond," immediately ask: "Does output appear instantly, or only after closing/exiting?" If delayed, investigate buffering at I/O boundaries (pipes, sockets, streams) before debugging application logic.
+** 21. Get a Stack Trace Before Forming Any Hypothesis
+When a function fails unexpectedly, enable the language's debugger or traceback facility and reproduce the failure before theorizing about the cause.
+*** Principle: A stack trace tells you exactly where the failure is. Without one, you are guessing which layer is broken, and each guess costs a full investigate-test cycle. Even experienced developers routinely guess wrong.
+*** Action: Before forming any hypothesis, enable full error reporting (e.g., debugger break-on-error, verbose tracebacks, crash dumps) and trigger the failure once. Read the trace top-to-bottom. Only then decide what to investigate.
+*** Anti-pattern: Theorizing about the cause, implementing a speculative fix, testing it, and discovering it didn't help — then repeating this loop multiple times before finally looking at the actual error.
+** 22. Check User Customization Before Blaming the System
+When a well-established feature or library function fails, user-injected code is the most likely culprit — not a bug in the library or the system.
+*** Principle: Hooks, callbacks, plugins, middleware, decorators, monkey patches, interceptors, and configuration files all inject user code into standard code paths. Any of these can crash, alter control flow, or corrupt state in ways that make the standard feature appear broken.
+*** Action: Before diving into library internals, enumerate all user customization points that run during the failing operation (event hooks, lifecycle callbacks, registered plugins, advice/aspects, middleware chains). Disable them and test. If the feature works without them, re-enable one at a time to find the culprit.
+** 23. Verify Your Hypothesis Explains the Full Failure
+Before implementing a fix, ask: "Does this hypothesis fully account for every observed symptom?" If it doesn't, you are fixing a symptom, not the cause.
+*** Principle: A correct root-cause hypothesis must explain all the evidence. If your theory explains why output looks wrong but not why a function returns zero results, the theory is incomplete — and any fix based on it will not resolve the real problem.
+*** Action: Before writing any fix, list every observed symptom. Check each one against your hypothesis. If any symptom remains unexplained, keep investigating instead of implementing a partial fix.
+*** Anti-pattern: Observing that component A has a plausible defect, fixing it, and discovering the real failure was in component B — which you never examined because the defect in A seemed like a sufficient explanation.
