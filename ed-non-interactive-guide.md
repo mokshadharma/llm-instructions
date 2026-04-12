@@ -43,7 +43,12 @@ When reading or editing files programmatically, **always use `ed`**. Do not use 
    - If YES: You MUST use sentinel prefixes (`%%`) on every inserted line
    - See "Editing Files Containing ed Commands" section
 
-3. **Have I measured the target line's indentation?**
+3. **Does the content I'm inserting contain backticks (`` ` ``)?**
+   - If YES: You MUST use async `ed` with `write_bash` instead of a heredoc
+   - Heredocs containing backticks are blocked by the shell security filter
+   - See "MANDATORY: Interactive `ed` for Backtick Content" section
+
+4. **Have I measured the target line's indentation?**
    - Run: `bin/measure-indent.py LINE FILE`
    - Record the number before proceeding
    - Never estimate by counting spaces visually
@@ -711,6 +716,91 @@ EDSCRIPT4829
 **Decision flowchart:**
 1. Does your insertion need shell variable expansion (like `$(I 0)`)? → Use UNQUOTED `<<EDSCRIPT`
 2. Otherwise → Use QUOTED `<<'EDSCRIPT'` (safer default)
+
+### MANDATORY: Interactive `ed` for Backtick Content
+
+**When your inserted or replaced content contains backticks (`` ` ``), you
+MUST use interactive `ed` via async mode instead of a heredoc.** This is
+not optional — heredocs containing backticks will be blocked by the shell
+security filter, even inside single-quoted heredocs where no expansion
+occurs. The filter cannot distinguish safe from unsafe backtick usage and
+rejects all of it.
+
+**Why this happens:** Backticks are shell command substitution syntax
+(`` `command` `` is equivalent to `$(command)`). The security filter scans
+the entire heredoc body for patterns that resemble command substitution and
+blocks them unconditionally, regardless of quoting.
+
+**The solution:** Run `ed` in async mode (without a heredoc) and feed
+commands directly to its stdin via `write_bash`. The input goes straight to
+`ed` with no shell interpretation, so backticks are treated as literal
+characters.
+
+**The technique:**
+
+Step 1: Start `ed` in async mode:
+```bash
+# bash mode="async" shellId="ed-session"
+ed -s file.py
+```
+
+Step 2: Feed commands via `write_bash` (shellId="ed-session"):
+```
+H
+50,52c
+> The `compute_cascade_candidates` function calls
+> `find_direct_dependents_any_status` iteratively as a BFS
+> building block to expand one hop at a time.
+.
+w
+q
+```
+
+The `write_bash` input goes directly to `ed`'s stdin — no shell
+interpretation occurs, so backticks are literal. The `.`, `w`, and `q`
+lines are actual `ed` commands here (end insert, write, quit), not content.
+
+Step 3: Verify the edit landed correctly (normal heredoc is fine here since
+verification output doesn't require backticks in the heredoc body):
+```bash
+ed -s file.py <<'EDSCRIPT4829'
+H
+50,52n
+EDSCRIPT4829
+```
+
+**All standard `ed` operations work in async mode:** `a` (append), `i`
+(insert), `c` (change), `d` (delete), `s///` (substitute), assertions
+(`s/pattern/&/`), `n` (print with numbers), `w` (write), `q`/`Q` (quit).
+Failed assertions produce visible "No match" errors and non-zero exit
+codes, just as in heredoc mode.
+
+**When to use each mode:**
+
+| Content has backticks? | Mode to use |
+|------------------------|-------------|
+| No                     | Heredoc (quoted or unquoted as appropriate) |
+| Yes                    | Async `ed` with `write_bash` (MANDATORY) |
+
+**This rule applies to ALL `ed` operations** — insertions, replacements,
+substitutions, and any other command where the content being written to
+the file contains backtick characters. It also applies to sentinel-prefixed
+content: even `%%`-prefixed lines containing backticks will be blocked
+in a heredoc.
+
+**IMPORTANT: Sentinel prefixes still required for ed-command content.**
+When the content you are inserting via async mode itself contains lines
+that look like `ed` commands (a lone `.` that is content, not a terminator;
+or lines containing just `w`, `q`, etc.), you MUST use `%%` sentinel
+prefixes on every inserted line — exactly as described in "Editing Files
+Containing ed Commands" above. The async mode solves the backtick problem;
+sentinels solve the ed-command-as-content problem. When both issues are
+present (backticks AND ed-dangerous content), use both techniques together:
+async mode with sentinel-prefixed lines.
+
+**Common mistake:** Do not attempt workarounds like escaping backticks or
+using intermediate files with other tools. The async `ed` approach is the
+correct and only solution — it keeps `ed` as the sole file editor.
 
 ## Essential Commands Reference
 
