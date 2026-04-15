@@ -44,6 +44,8 @@ Bugs that happen "sometimes," or after "waiting a while," or depend on "heavy lo
 *** Action: When a bug is intermittent, ask: "What shared or finite resource could be exhausted or contended at the moment of failure?" Then measure that resource's utilization at failure time vs. success time.
 ** 6. Prove the Negative
 Proving a negative is often the fastest way to eliminate entire categories of hypotheses.
+*** Principle: Instead of trying to confirm what the bug *is*, prove what it *isn't*. A single test that rules out an entire class of causes (e.g., "the bug reproduces without the network, so it's not a network issue") is worth more than ten tests that incrementally narrow within a single class.
+*** Action: For each hypothesis category, design the cheapest possible test that would conclusively rule it out. Run those elimination tests before pursuing any single hypothesis in depth.
 *** But proving a negative requires exhaustive coverage
 A negative conclusion ("X didn't happen") is only as strong as the coverage of the sources you checked. If you searched one log and found nothing, you've only proven X didn't happen *within that log's scope*. The system may have multiple logging layers, each with architectural blind spots. Before accepting a negative, enumerate every source that would record the event and check each one. A negative from a single source is a *lead*, not a conclusion.
 ** 7. Don't Debug the Library Before the System
@@ -106,17 +108,31 @@ When debugging, you hold implicit assumptions about data formats, value ranges, 
 If a system appears unresponsive, ask when (not just what) output appears. Buffering issues are invisible if you only examine content.
 *** Principle: "No response" often means "delayed response due to buffering." Output that appears only after process exit, window close, or timeout indicates a pipe, stream, or I/O buffering problem - not a logic error.
 *** Action: When something "doesn't respond," immediately ask: "Does output appear instantly, or only after closing/exiting?" If delayed, investigate buffering at I/O boundaries (pipes, sockets, streams) before debugging application logic.
-** 21. Absence of Evidence Is Not Evidence of Absence
+** 21. Get a Stack Trace Before Forming Any Hypothesis
+When a function fails unexpectedly, enable the language's debugger or traceback facility and reproduce the failure before theorizing about the cause.
+*** Principle: A stack trace tells you exactly where the failure is. Without one, you are guessing which layer is broken, and each guess costs a full investigate-test cycle. Even experienced developers routinely guess wrong.
+*** Action: Before forming any hypothesis, enable full error reporting (e.g., debugger break-on-error, verbose tracebacks, crash dumps) and trigger the failure once. Read the trace top-to-bottom. Only then decide what to investigate.
+*** Anti-pattern: Theorizing about the cause, implementing a speculative fix, testing it, and discovering it didn't help — then repeating this loop multiple times before finally looking at the actual error.
+** 22. Check User Customization Before Blaming the System
+When a well-established feature or library function fails, user-injected code is the most likely culprit — not a bug in the library or the system.
+*** Principle: Hooks, callbacks, plugins, middleware, decorators, monkey patches, interceptors, and configuration files all inject user code into standard code paths. Any of these can crash, alter control flow, or corrupt state in ways that make the standard feature appear broken.
+*** Action: Before diving into library internals, enumerate all user customization points that run during the failing operation (event hooks, lifecycle callbacks, registered plugins, advice/aspects, middleware chains). Disable them and test. If the feature works without them, re-enable one at a time to find the culprit.
+** 23. Verify Your Hypothesis Explains the Full Failure
+Before implementing a fix, ask: "Does this hypothesis fully account for every observed symptom?" If it doesn't, you are fixing a symptom, not the cause.
+*** Principle: A correct root-cause hypothesis must explain all the evidence. If your theory explains why output looks wrong but not why a function returns zero results, the theory is incomplete — and any fix based on it will not resolve the real problem.
+*** Action: Before writing any fix, list every observed symptom. Check each one against your hypothesis. If any symptom remains unexplained, keep investigating instead of implementing a partial fix.
+*** Anti-pattern: Observing that component A has a plausible defect, fixing it, and discovering the real failure was in component B — which you never examined because the defect in A seemed like a sufficient explanation.
+** 24. Absence of Evidence Is Not Evidence of Absence
 When an investigation finds no trace of an event in a data source, the instinct is to conclude the event didn't happen. This is only valid if the data source has proven, complete coverage for that class of event. Systems often have multiple overlapping telemetry layers (e.g., edge logs, gateway logs, application logs, audit logs), each with different coverage boundaries. An event blocked at an upstream layer may never reach a downstream layer's telemetry, creating an architectural blind spot that looks like "the event didn't happen." (This is the deeper principle behind tip #6's coverage requirement and tip #14's second case.)
 *** Principle: "I didn't find it" means "it's not in this source," not "it didn't occur." Treat zero results from a single source as a partial answer, not a definitive one.
 *** Action: Before concluding that an event didn't happen, enumerate every system in the request/data path that could record it. Check each layer, starting from the outermost (closest to the origin). Only conclude "it didn't happen" when every layer agrees.
 *** Anti-pattern: Finding zero results in a single telemetry source, then constructing an elaborate alternative theory (proxy issues, network failures, client bugs) to explain the absence. The simplest explanation for "not in this layer" is often "recorded in a different layer."
-** 22. Seek Disconfirming Evidence After Forming a Hypothesis
+** 25. Seek Disconfirming Evidence After Forming a Hypothesis
 Once you have a plausible hypothesis, the natural tendency is to seek evidence that confirms it. Every observation gets interpreted through the lens of the current theory. This confirmation bias can lead you to build an internally consistent but completely wrong narrative.
 *** Principle: A good hypothesis should be tested by trying to disprove it, not by accumulating supporting evidence. One disconfirming fact is worth more than ten confirming ones.
 *** Action: After forming a hypothesis, explicitly ask: "What would I expect to see if this hypothesis were wrong?" Then look for that specific evidence. If you cannot find disconfirming evidence, verify that you looked in a place where it would actually appear.
 *** Example: If your hypothesis is "the request never reached the server," look for any server-side trace of the request (not just the application log you already checked). If your hypothesis is "the error is caused by a proxy," look for server-side evidence of the error that would rule out the proxy.
-** 23. Confidence Requires Both Source Coverage and Data Consistency
+** 26. Confidence Requires Both Source Coverage and Data Consistency
 Internal consistency of a dataset is necessary but not sufficient for high confidence. A dataset may be perfectly clean, complete, and self-consistent, yet represent only a slice of reality. If every row in a table shows "success," the correct conclusion is "every event recorded in this table was successful," not "every event was successful." Consistency tells you the data doesn't contradict itself; coverage tells you how much of reality the data represents. You need both.
 *** Principle: Confidence in a conclusion should scale with both the consistency of each source and the number of independent sources that corroborate it. A consistent single source is better than an inconsistent one, but multiple independent consistent sources are stronger than any single source alone.
 *** Action: When labeling confidence on a finding, state which sources were checked and which were not. "Verified" should mean corroborated across multiple independent sources. "High confidence" should mean supported by one source with no known coverage gaps. "Assumption" should mean supported by one source with known or unknown coverage gaps.

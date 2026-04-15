@@ -1,5 +1,7 @@
 # Robust Non-Interactive Editing with `ed`
 
+> **IMPORTANT: Read this entire document from start to finish — every single line — before performing any file edits. Do not skip sections or skim. Every rule and technique described here is essential to avoiding failed edits.**
+
 This guide outlines a fail-safe methodology for programmatically editing files using the `ed` line editor. By following these strict procedures, you can eliminate common errors like shifting line numbers and broken syntax.
 
 ## Quick Reference (TL;DR)
@@ -15,11 +17,11 @@ This guide outlines a fail-safe methodology for programmatically editing files u
 
 > **WARNING: NEVER type literal leading whitespace in heredocs.** All indentation must come from the `$(I N)` function. See "Programmatic Indentation for Insertions" below.
 
+## Always Use `ed` for File Reading, Editing, and Creation
 
+When reading or editing files programmatically, **always use `ed`**. Do not use other tools like `sed`, `cat`, `replace_string_in_file`, `multi_replace_string_in_file`, or similar alternatives. The requirement to use `ed` for reading and editing overrides all other file-related instructions.
 
-## Always Use `ed` for File Editing
-
-When editing files programmatically, **always use `ed`**. Do not use other tools like `sed`, `replace_string_in_file`, `multi_replace_string_in_file`, or similar alternatives.  The requirement to use `ed` for editing overrides all other editing-related instructions.
+`ed` can also create new files. When you open a non-existent file, `ed` prints a warning (e.g., `file.py: No such file or directory`) — this is expected and should be ignored. After inserting content and writing with `w`, the file is created.
 
 **Why?**
 - The workflow requires discovering exact line numbers before editing, which forces you to verify the current file state
@@ -41,7 +43,12 @@ When editing files programmatically, **always use `ed`**. Do not use other tools
    - If YES: You MUST use sentinel prefixes (`%%`) on every inserted line
    - See "Editing Files Containing ed Commands" section
 
-3. **Have I measured the target line's indentation?**
+3. **Does the content I'm inserting contain backticks (`` ` ``)?**
+   - If YES: You MUST use async `ed` with `write_bash` instead of a heredoc
+   - Heredocs containing backticks are blocked by the shell security filter
+   - See "MANDATORY: Interactive `ed` for Backtick Content" section
+
+4. **Have I measured the target line's indentation?**
    - Run: `bin/measure-indent.py LINE FILE`
    - Record the number before proceeding
    - Never estimate by counting spaces visually
@@ -61,27 +68,7 @@ When performing multiple edits on a single file, **always apply changes in rever
 
 When you have multiple operations to perform, execute them as separate ed invocations, starting with the highest line number:
 
-**Wrong Way (Top-Down order):**
-```bash
-# Operation 1: Insert at line 1 (shifts everything down)
-ed -s file.py <<'EDSCRIPT1234'
-H
-1i
-import os
-.
-w
-q
-EDSCRIPT1234
-
-# Operation 2: Edit line 50 - BUT line 50 is now line 51!
-ed -s file.py <<'EDSCRIPT4829'
-H
-50s/old/new/
-w
-q
-EDSCRIPT4829
-```
-**Result:** Line 50 edit targets wrong line. **FAILED.**
+**Wrong Way (Top-Down order):** If you insert at line 1 first, everything below shifts down by one — so your next edit targeting line 50 actually hits the original line 49. **FAILED.**
 
 **Right Way (Bottom-Up order):**
 ```bash
@@ -113,6 +100,8 @@ Ed does **not** abort on error. If an assertion or edit fails, ed prints an erro
 - Partial edits get written to disk
 
 With one operation per invocation, you can verify and stop between operations if something goes wrong.
+
+An operation can affect multiple lines (e.g., inserting 10 lines is one operation), but a single ed invocation should not contain unrelated edits (e.g., inserting 5 lines then deleting 3 elsewhere is two operations).
 
 ## The Robust Workflow
 
@@ -167,14 +156,7 @@ bin/measure-indent.py 47 myfile.py
 
 **Record the indentation number before proceeding.** Use exactly that many spaces for sibling lines, or add the file's indent width for child blocks.
 
-**Common Failure Mode:**
-```bash
-# You think: "it's inside a try block in a function, so probably 12 spaces"
-# Reality: it's 8 spaces
-# Result: IndentationError, multiple retry attempts, wasted time
-```
-
-Guessing indentation WILL fail. Measuring takes 5 seconds. Fixing failed edits takes minutes.
+**Common Failure Mode:** Guessing indentation WILL fail (e.g., you assume 12 spaces but it's actually 8). Measuring takes 5 seconds. Fixing failed edits takes minutes.
 
 ### Programmatic Indentation for Insertions
 
@@ -224,8 +206,6 @@ EDSCRIPT4829
 - Shell expansion happens before `ed` sees the content
 
 ### 2. Script: Construct the Edit (One Operation Per Invocation)
-
-**CRITICAL: For any insertion with indentation, you MUST use programmatic indentation.** See the "Programmatic Indentation for Insertions" section above. Never type literal leading whitespace in heredocs.
 
 - **Unquoted heredoc** (`<<EDSCRIPT4829`): Required when using `$(I N)` for indentation
 - **Quoted heredoc** (`<<'EDSCRIPT4829'`): Only for content with no leading whitespace (e.g., imports at column 0)
@@ -328,6 +308,18 @@ python3 -m json.tool FILE > /dev/null && echo "Valid JSON"
 ```
 This catches errors early when they're easiest to fix, before additional edits create cascading problems.
 
+**Do not rely on IDE file-reading tools** (like VS Code's `read_file`) for verification, as they may return cached/stale content that doesn't reflect recent external changes. Always verify with `ed` or terminal commands.
+
+**Why `ed` over shell tools for verification?**
+- `cat` - dumps entire file, no line numbers, can be huge
+- `sed -n 'Np'` - no line numbers
+- `ed` with `n` - gives exact lines with their line numbers, confirming both content and position
+
+**Get line count:**
+```bash
+wc -l < filename.py
+```
+
 ### 1. Verbose Error Messages (`H`)
 By default, `ed` only prints `?` on error. You **must** enable verbose error messages to debug failures effectively.
 *   **The Fix:** Always start your script with the `H` command.
@@ -336,8 +328,8 @@ By default, `ed` only prints `?` on error. You **must** enable verbose error mes
 ### 2. The "Write-Once" Atomicity Rule
 The `w` (write) command **must appear exactly once, at the very end of the script**.
 *   **Why:** `ed` operates on an in-memory buffer. Until you issue `w`, the file on disk remains untouched - this is the source of atomicity.
-*   **Warning:** Assertion failures (`s/pattern/&/`) do NOT stop script execution. Ed prints an error but continues with subsequent commands, including `w`. The exit code will be non-zero, but the file will still be written.
-*   **Benefit:** If the script crashes (e.g., ed is killed), the file is safe because nothing was written. However, if the script completes, `w` always executes - even after assertion failures.
+*   **Warning:** Assertion failures do not stop execution - `w` still runs. See "Why One Operation Per Invocation?" for details.
+*   **Benefit:** If the script crashes (e.g., ed is killed), the file is safe because nothing was written.
 
 **CRITICAL LIMITATION:** This atomicity only applies *within a single script*. When using multiple scripts (each with its own `w`), the first script's successful write changes the file state. Any subsequent scripts that rely on outdated information (such as line content from earlier `rg` or `grep` output) will target the wrong content. See "Multi-Script Editing with Verification" for the mandatory verification workflow between scripts.
 
@@ -347,11 +339,11 @@ The `w` (write) command **must appear exactly once, at the very end of the scrip
 1. For substitution edits (`s/old/new/`): if the anchor fails, the edit also won't find `old`, so nothing changes - no corruption
 2. For all edits: ed exits with non-zero status, signaling something went wrong
 
-Even with bottom-up editing, you might target the wrong line if the file changed unexpectedly. Assertions help detect this, but they do **not** prevent subsequent commands from executing (see warnings below).
+Even with bottom-up editing, you might target the wrong line if the file changed unexpectedly. Assertions help detect this (see "Why One Operation Per Invocation?").
 
 **The Technique:**
 Use the substitute command `s/pattern/&/` to verify you're targeting the correct line. If the pattern matches, the command succeeds silently. If not, ed prints an error.
-*   **Important:** A failed assertion does NOT stop script execution. Ed prints the error but continues with subsequent commands. The value of assertions is that ed's exit code will be non-zero, allowing you to detect problems after the script completes.
+*   **Important:** Failed assertions do not stop execution — their value is making ed's exit code non-zero. See "Why One Operation Per Invocation?".
 *   **Recommended workflow:** Do one operation per ed invocation (an operation can insert/delete/change multiple lines, but is a single ed command). Verify after each. This avoids the need for in-script assertions entirely.
 * **Note:** You must escape special regex characters (like `*`, `[`, `.`) in the pattern. Failure to escape `[` or `.` will cause `ed` to interpret them as regex classes or wildcards, leading to "No match" errors or incorrect edits.
 
@@ -375,11 +367,11 @@ $(I 0)NewItem
 .
 ```
 
-The assertion helps you notice if line numbers shifted - ed's exit code will be non-zero. However, the edit still executes. For true safety, use one operation per ed invocation and verify after each.
+The assertion helps detect shifted line numbers via ed's non-zero exit code (see "Why One Operation Per Invocation?").
 
 **Warning: `q` vs `Q` when testing assertions**
 
-When using `s/pattern/&/` to *test* whether a line matches (without intending to write), the substitution modifies the buffer even though the content is unchanged. If you then use `q` (quit), `ed` will refuse to exit and report "Warning: buffer modified" with exit code 1.
+When using `s/pattern/&/` to *test* whether a line matches (without intending to write), the substitution modifies the buffer even though the content is unchanged. This is expected `ed` behavior, not an error in your pattern. If you then use `q` (quit), `ed` will refuse to exit and report "Warning: buffer modified" with exit code 1.
 
 **Solutions:**
 - **For verification only:** Use `Q` (uppercase) to quit unconditionally without saving:
@@ -392,10 +384,6 @@ When using `s/pattern/&/` to *test* whether a line matches (without intending to
   ```
 - **For actual edits:** Continue to use `q` after `w` (write) as normal - the warning only occurs when quitting a modified-but-not-written buffer.
 
-**Key insight:** The `s/pattern/&/` command *always* marks the buffer as modified, even when replacing text with itself. This is expected behavior, not an error in your pattern.
-
-### 3. After every successful edit, immediately verify before proceeding to additional edits.
-
 ## Multi-Script Editing with Verification
 
 **WARNING: The #1 Multi-Script Failure Mode**
@@ -405,15 +393,7 @@ After a script writes (`w`), all prior context about the file is potentially sta
 - Line content may have changed
 - Output from earlier `rg`, `grep`, or `ed` queries no longer reflects reality
 
-**The failure pattern:**
-1. You query the file and note line numbers/content
-2. Script 1 runs successfully and writes
-3. You run Script 2 using the *original* query results
-4. Script 2 fails or corrupts the file because line 50 no longer contains what you expected
-
 **The solution:** After every `w`, you MUST re-query the file before constructing the next script. Never reuse stale context.
-
-When making multiple edits across several `ed` invocations (each with its own `w`), verification between scripts is critical to maintain accuracy.
 
 **Mandatory verification after each script:**
 1. Verify the exact change with `ed -s FILE <<< 'H\nSTART,ENDn'`
@@ -421,60 +401,9 @@ When making multiple edits across several `ed` invocations (each with its own `w
 3. Run syntax checker (`python3 -m py_compile`, etc.)
 4. Only proceed to the next script if all checks pass
 
-**Example of verified multi-script editing:**
-```bash
-# Script 1: Add import at top
-ed -s file.py <<'EDSCRIPT4829'
-H
-1i
-import os
-.
-w
-q
-EDSCRIPT4829
-
-# VERIFY before continuing
-ed -s file.py <<'EDSCRIPT1920'
-H
-1,3n
-EDSCRIPT1920
-# Confirm import present at line 1
-
-python3 -m py_compile file.py || { echo "Syntax error after script 1"; exit 1; }
-
-# Script 2: Add function at bottom
-# Line numbers from original file are now shifted by +1
-# Must account for the import insertion
-# Using unquoted heredoc for $(I N) - base is empty string for column 0
-base=""
-unit=4
-I() { printf '%s%*s' "$base" $(($1*unit)) ''; }
-
-ed -s file.py <<EDSCRIPT3847
-H
-$a
-
-$(I 0)def new_function():
-$(I 1)pass
-.
-w
-q
-EDSCRIPT3847
-
-# VERIFY again
-python3 -m py_compile file.py || { echo "Syntax error after script 2"; exit 1; }
-```
-
 **Key principle:** After each `w` (write), the file state has changed. Subsequent scripts must account for line number shifts from previous edits. Verification catches errors before they accumulate.
 
-**Always use one operation per ed invocation**
-
-The safest approach for any editing task:
-1. Make one operation per ed script (inserting 10 lines is one operation; inserting 5 lines then deleting 3 elsewhere is two)
-2. Verify the edit succeeded (syntax check, view the lines)
-3. Re-query line numbers before the next edit
-
-Assertions (`s/pattern/&/`) can help detect stale line numbers via ed's non-zero exit code, but they do not prevent the edit from executing. If you must combine assertion and edit in one script, check `$?` afterward and revert with `git checkout` if it failed.
+Assertions (`s/pattern/&/`) can help detect stale line numbers via ed's non-zero exit code (see "Why One Operation Per Invocation?"). Check `$?` afterward and revert with `git checkout` if it failed.
 
 **Example: Assertion with edit (less safe - edit runs even if assertion fails)**
 ```bash
@@ -491,9 +420,33 @@ q
 EDSCRIPT2847
 ```
 
-If the assertion failed, `$?` will be non-zero after the script completes. The edit still executed, so you may need to revert with `git checkout` and retry. This is why one-operation-per-invocation is safer.
+If the assertion failed, revert with `git checkout` and retry (see "Why One Operation Per Invocation?").
 
 ## Robust Editing Patterns
+
+### Global Substitution with `g`
+
+When you need to rename a symbol or replace a string across an entire file, the global command `g` is safer and more efficient than tracking individual line numbers. It performs all replacements atomically in a single pass with no line-number bookkeeping.
+
+```bash
+ed -s file.py <<'EDSCRIPT'
+H
+g/old_function/s//new_function/g
+w
+q
+EDSCRIPT
+```
+
+**When to use `g`:**
+- Renaming a variable, function, or class across the entire file
+- Any "find and replace all" operation where every match should be changed
+
+**When NOT to use `g`:**
+- When only specific occurrences should change (e.g., line 50 but not line 80)
+- When different matches need different replacements
+- For structural edits (inserting, deleting, or moving lines)
+
+For those cases, continue using targeted line-number edits with one operation per invocation in bottom-up order.
 
 ### Comma Safety
 When appending items to lists or dictionaries in code, the previous line might be missing a trailing comma.
@@ -509,19 +462,6 @@ $(I 0)NewItem
 .
 ```
 This works perfectly in reverse order because the `a` command inserts *after* the target line, so line 83 remains stable for the substitution.
-
-### Atomic Scripts
-Always use a single `ed` invocation containing **one operation**. Use a **Quoted Heredoc** (`<<'EDSCRIPT4829'`) for content without leading whitespace, or an **Unquoted Heredoc** (`<<EDSCRIPT4829`) when using `$(I N)` for indentation. This ensures the file is opened and written only once, prevents race conditions, and handles special characters safely.
-
-```bash
-# Good: One operation per invocation
-ed -s file <<'EDSCRIPT4829'
-H
-50s/old/new/
-w
-q
-EDSCRIPT4829
-```
 
 ### Heredoc Delimiter Conflicts
 
@@ -665,17 +605,7 @@ EDSCRIPT8374
 
 Confirm no `%%` prefixes remain and the content is correct.
 
-**Why prefix EVERY line?**
-
-Selectively prefixing only "dangerous" lines leads to errors:
-- You might miss a line that looks safe but isn't
-- Nesting levels get confusing (content showing sentinel examples needs double prefixes)
-- Mental overhead increases with complexity
-
-By prefixing every line unconditionally, you:
-- Eliminate judgment calls
-- Make the pattern mechanical and reliable
-- Can verify correctness by simply checking that all inserted lines start with `%%`
+**Why prefix EVERY line?** Selectively prefixing only "dangerous" lines leads to mistakes — universal prefixing eliminates judgment calls and is mechanically verifiable.
 
 **Sentinel choice:**
 - `%%` is recommended: unlikely to appear at the start of real content
@@ -720,22 +650,7 @@ After running `s/^%%//` on the inserted line:
 2. If YES: You MUST use unquoted heredoc + `I()` function
 3. If NO: Quoted heredoc is acceptable
 
-**Common mistake:** Using literal spaces in a quoted heredoc for indented code
-```bash
-# WRONG: Literal spaces will be mangled or inconsistent
-ed -s file.py <<'EDSCRIPT4829'
-H
-$a
-
-def my_function():
-    return True  # These literal spaces are fragile
-.
-w
-q
-EDSCRIPT4829
-```
-
-The correct approach uses `I()` with an unquoted heredoc - see examples below.
+**Common mistake:** Never use literal spaces in a quoted heredoc for indented code — the indentation will be fragile and inconsistent. Use `I()` with an unquoted heredoc instead (see examples below).
 
 **Quoted heredoc (`<<'EDSCRIPT4829'`):**
 - **Use for:** Inserting content at column 0 (no leading whitespace) that contains special characters
@@ -796,22 +711,96 @@ q
 EDSCRIPT4829
 ```
 
-**Common mistake:** Using `$(I 0)` inside a quoted heredoc
-```bash
-# WRONG: $(I 0) appears literally in file
-ed -s file.py <<'EDSCRIPT4829'
-H
-10a
-$(I 0)def example():  # This is LITERAL text: "$(I 0)def example():"
-.
-w
-q
-EDSCRIPT4829
-```
+**Common mistake:** Never use `$(I 0)` inside a quoted heredoc — it will appear as literal text in the file, not as indentation.
 
 **Decision flowchart:**
 1. Does your insertion need shell variable expansion (like `$(I 0)`)? → Use UNQUOTED `<<EDSCRIPT`
 2. Otherwise → Use QUOTED `<<'EDSCRIPT'` (safer default)
+
+### MANDATORY: Interactive `ed` for Backtick Content
+
+**When your inserted or replaced content contains backticks (`` ` ``), you
+MUST use interactive `ed` via async mode instead of a heredoc.** This is
+not optional — heredocs containing backticks will be blocked by the shell
+security filter, even inside single-quoted heredocs where no expansion
+occurs. The filter cannot distinguish safe from unsafe backtick usage and
+rejects all of it.
+
+**Why this happens:** Backticks are shell command substitution syntax
+(`` `command` `` is equivalent to `$(command)`). The security filter scans
+the entire heredoc body for patterns that resemble command substitution and
+blocks them unconditionally, regardless of quoting.
+
+**The solution:** Run `ed` in async mode (without a heredoc) and feed
+commands directly to its stdin via `write_bash`. The input goes straight to
+`ed` with no shell interpretation, so backticks are treated as literal
+characters.
+
+**The technique:**
+
+Step 1: Start `ed` in async mode:
+```bash
+# bash mode="async" shellId="ed-session"
+ed -s file.py
+```
+
+Step 2: Feed commands via `write_bash` (shellId="ed-session"):
+```
+H
+50,52c
+> The `compute_cascade_candidates` function calls
+> `find_direct_dependents_any_status` iteratively as a BFS
+> building block to expand one hop at a time.
+.
+w
+q
+```
+
+The `write_bash` input goes directly to `ed`'s stdin — no shell
+interpretation occurs, so backticks are literal. The `.`, `w`, and `q`
+lines are actual `ed` commands here (end insert, write, quit), not content.
+
+Step 3: Verify the edit landed correctly (normal heredoc is fine here since
+verification output doesn't require backticks in the heredoc body):
+```bash
+ed -s file.py <<'EDSCRIPT4829'
+H
+50,52n
+EDSCRIPT4829
+```
+
+**All standard `ed` operations work in async mode:** `a` (append), `i`
+(insert), `c` (change), `d` (delete), `s///` (substitute), assertions
+(`s/pattern/&/`), `n` (print with numbers), `w` (write), `q`/`Q` (quit).
+Failed assertions produce visible "No match" errors and non-zero exit
+codes, just as in heredoc mode.
+
+**When to use each mode:**
+
+| Content has backticks? | Mode to use |
+|------------------------|-------------|
+| No                     | Heredoc (quoted or unquoted as appropriate) |
+| Yes                    | Async `ed` with `write_bash` (MANDATORY) |
+
+**This rule applies to ALL `ed` operations** — insertions, replacements,
+substitutions, and any other command where the content being written to
+the file contains backtick characters. It also applies to sentinel-prefixed
+content: even `%%`-prefixed lines containing backticks will be blocked
+in a heredoc.
+
+**IMPORTANT: Sentinel prefixes still required for ed-command content.**
+When the content you are inserting via async mode itself contains lines
+that look like `ed` commands (a lone `.` that is content, not a terminator;
+or lines containing just `w`, `q`, etc.), you MUST use `%%` sentinel
+prefixes on every inserted line — exactly as described in "Editing Files
+Containing ed Commands" above. The async mode solves the backtick problem;
+sentinels solve the ed-command-as-content problem. When both issues are
+present (backticks AND ed-dangerous content), use both techniques together:
+async mode with sentinel-prefixed lines.
+
+**Common mistake:** Do not attempt workarounds like escaping backticks or
+using intermediate files with other tools. The async `ed` approach is the
+correct and only solution — it keeps `ed` as the sole file editor.
 
 ## Essential Commands Reference
 
@@ -825,11 +814,14 @@ EDSCRIPT4829
 | `START,ENDd`  | Delete lines START through END (inclusive).             |
 | `s/old/new/`  | Substitute text on the current line.                    |
 | `m`           | Move line(s) to after another line.                     |
+| `t`           | Copy (transfer) line(s) to after another line.          |
 | `w`           | Write changes to disk.                                  |
 | `q`           | Quit.                                                   |
 | `Q`           | Quit unconditionally (no warning if buffer modified). |
 | `p`           | Print the current line (without line numbers).        |
+| `l`           | List lines unambiguously (shows `\t`, trailing spaces, `$` at EOL). |
 | `$=`          | Print the total number of lines in the buffer.        |
+| `#`           | Comment; the rest of the line is ignored (GNU extension). |
 
 > **For `a`, `i`, and `c` commands:** When inserting content that needs indentation, you MUST use the `I()` function with an unquoted heredoc. Never type literal leading spaces. See "Programmatic Indentation for Insertions" in The Robust Workflow section.
 
@@ -871,39 +863,7 @@ q
 EDSCRIPT4829
 ```
 
-**Solution 2: Delete and reinsert in new order (multiple operations - less safe)**
-
-This approach requires multiple operations. For maximum safety, use separate invocations:
-```bash
-# First, note the content of lines 10 and 11 before editing
-
-# Delete line 11 first (bottom-up)
-ed -s file.md <<'EDSCRIPT4829'
-H
-11d
-w
-q
-EDSCRIPT4829
-
-# Delete line 10 (now at original position since we deleted below)
-ed -s file.md <<'EDSCRIPT4829'
-H
-10d
-w
-q
-EDSCRIPT4829
-
-# Insert in new order after line 9
-ed -s file.md <<'EDSCRIPT4829'
-H
-9a
-| TASK-029 | (content from original line 11) |
-| TASK-030 | (content from original line 10) |
-.
-w
-q
-EDSCRIPT4829
-```
+**Alternative:** If `m` doesn't fit your case, use bottom-up `d` (delete) combined with `a`/`i` (append/insert) to remove and reinsert lines in the desired order.
 
 **Recommendation:** Prefer Solution 1 (`m` command) when possible - it's a single operation.
 
@@ -914,16 +874,7 @@ EDSCRIPT4829
 
 To delete a block of consecutive lines, use a **range delete** - not individual line deletions.
 
-**Wrong Way (inefficient):**
-```bash
-# Deleting lines 50-55 one at a time (wasteful, error-prone)
-55d
-54d
-53d
-52d
-51d
-50d
-```
+Don't delete lines individually (`55d`, `54d`, `53d`, ...) when they're contiguous — use a range instead.
 
 **Right Way:**
 ```bash
@@ -999,63 +950,7 @@ EDSCRIPT4829
 ```
 
 ### Don't Combine Discovery with Assumptions
-Never issue multiple commands in one script where a later command depends on assumptions about output you haven't seen yet.
-
-```bash
-# WRONG: Assumes 236 exists based on nothing
-ed -s file.py <<'EDSCRIPT4829'
-H
-$=
-225,236n
-EDSCRIPT4829
-
-# RIGHT: Get length first, then query in a second invocation
-ed -s file.py <<'EDSCRIPT4829'
-H
-$=
-EDSCRIPT4829
-# Now you know it's 235 lines, so query accordingly:
-ed -s file.py <<'EDSCRIPT4829'
-H
-225,$n
-EDSCRIPT4829
-```
-
-### Verify Edits with `ed` (Not `read_file`)
-
-After editing a file with `ed`, always verify using `ed` itself or terminal commands. **Do not rely on IDE file-reading tools** (like VS Code's `read_file`), as they may return cached/stale content that doesn't reflect recent external changes.
-
-**Use `ed` with the `n` command for targeted verification:**
-```bash
-# Print lines 50-60 with line numbers
-ed -s file.py <<'EDSCRIPT4829'
-H
-50,60n
-EDSCRIPT4829
-
-# Print from line 225 to end of file
-ed -s file.py <<'EDSCRIPT4829'
-H
-225,$n
-EDSCRIPT4829
-
-# Print last 10 lines with line numbers
-ed -s file.py <<'EDSCRIPT4829'
-H
-$-9,$n
-EDSCRIPT4829
-```
-
-**Why `ed` over shell tools?**
-- `cat` - dumps entire file, no line numbers, can be huge
-- `head`/`tail` - no line numbers, requires mental math to determine positions
-- `sed -n 'Np'` - no line numbers
-- `ed` with `n` - gives exact lines with their line numbers, confirming both content and position
-
-**Get line count:**
-```bash
-wc -l < filename.py
-```
+Never issue multiple commands in one script where a later command depends on assumptions about output you haven't seen yet. For example, don't combine `$=` with a hardcoded range in the same invocation — get the length first, then query in a separate invocation using `$` addressing as shown above.
 
 ## Troubleshooting
 
@@ -1069,6 +964,15 @@ Common errors and their causes:
 | `Warning: buffer modified` | Used `q` after modifying without `w` | Use `Q` to quit unconditionally, or add `w` before `q` |
 | `Invalid command suffix` | Wrong syntax in command | Check command format (e.g., `s/old/new/` needs both delimiters) |
 | File unchanged after script | Script failed before `w` command | Check exit code; review verbose error output |
+
+**Debugging whitespace issues:** If `n` and `bin/measure-indent.py` don't explain an indentation or whitespace problem, use the `l` command to see lines unambiguously. It reveals tabs (`\t`), trailing spaces, and marks end-of-line with `$`:
+```bash
+ed -s file.py <<'EDSCRIPT'
+H
+50l
+Q
+EDSCRIPT
+```
 
 ### Special Characters That Need Escaping in Patterns
 
@@ -1096,12 +1000,7 @@ When an edit produces invalid syntax or incorrect results:
    ```
    Then analyze what went wrong and identify the line numbers to edit before trying again.
 
-**After revert, before retry:**
-1. Re-read the file to understand current state
-2. Identify exact line numbers for all needed edits
-3. Plan one operation per ed invocation (each operation can modify multiple lines)
-4. Execute operations in bottom-up order (highest line numbers first) to avoid line-number shifts
-5. Verify immediately after execution
+**After revert, before retry:** Follow the standard workflow — locate targets, plan one operation per invocation in bottom-up order, and verify after each.
 
 **Warning signs you may need to revert:**
 - Lost track of which content is where
@@ -1109,4 +1008,3 @@ When an edit produces invalid syntax or incorrect results:
 - Repeating same verification commands without progress
 
 **Key insight:** Patching a broken edit with more edits can work, but if you find yourself making multiple correction attempts without success, a clean revert + redesign is faster and safer than continued patching.
-
