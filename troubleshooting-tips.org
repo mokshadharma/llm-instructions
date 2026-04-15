@@ -14,7 +14,7 @@ Break down the system into the smallest testable units and isolate the failure t
 *** Test Components in Isolation (Surgical Debugging)
 When a large system fails, the bug is often masked by a separate, innocuous feature that changes the system state.
 **** Action: Temporarily comment out all *non-essential* functionality (e.g., network calls, database writes, UI updates) and run the simplest possible test case that still triggers the error.
-**** Goal: Strip the failure down to a single function or line of code that can be reliably reproduced. This prevents a minor logic error from masquerade as a complex logic error deep inside the program.
+**** Goal: Strip the failure down to a single function or line of code that can be reliably reproduced. This prevents a minor logic error from masquerading as a complex logic error deep inside the program.
 ** 3. Pinpoint the Nature of the Failure (The Error Taxonomy)
 Successful troubleshooting depends on correctly classifying the error.
 *** Distinguish Between Error Categories
@@ -30,19 +30,37 @@ If the error references a specific class, parameter, or constant used by a large
 **** Principle: Use the error message as a direct search query against the framework's official API documentation.
 **** Goal: Quickly confirm if the argument you provided matches the framework's required syntax, constraints, or expected data format, bypassing internal code debugging.
 ** 4. Verify the Boundary First
-** 5. Intermittency Usually Implies Contention
-Bugs that happen "sometimes," or after "waiting a while," or depend on "heavy load" are rarely logic errors (like an off-by-one bug). They are almost always resource contention issues (race conditions). When time is a variable, look for two things fighting for the same resource.
+When two components interact and the result is wrong, check the boundary between them before debugging either component's internals. The interface (API call, file format, message schema, network request) is the most likely failure point. (See also tip #1's "Validate Inputs at Every Boundary" for the observability angle, and tip #13 for the specific case of units/formats.)
+*** Principle: Most bugs live at boundaries, not inside components. The data crossing the boundary is often malformed, missing, or in an unexpected format, while both components work correctly in isolation.
+*** Action: Capture the exact input and output at the boundary. Compare what the producer sent to what the consumer received. If they differ, the bug is at the boundary. If they match but the result is still wrong, then debug the consumer's handling of valid input.
+** 5. Intermittency Usually Implies a Shared or Exhaustible Resource
+Bugs that happen "sometimes," or after "waiting a while," or depend on "heavy load" are rarely pure logic errors (like an off-by-one bug). They are almost always tied to a shared or exhaustible resource. When time or load is a variable, look for something that runs out, fills up, or gets contended.
+*** Common causes of intermittent failures
+- **Contention / race conditions**: two things fighting for the same resource (locks, files, database rows).
+- **Quota / rate limit exhaustion**: a capacity ceiling hit transiently under load (API rate limits, connection pools, thread pools, disk space).
+- **Cache timing**: behavior changes depending on whether a cache is warm or cold, or on TTL expiry boundaries.
+- **Transient external dependencies**: a downstream service that is sometimes slow, unavailable, or returns errors under its own load.
+- **Retry amplification**: a failure triggers retries, which increase load, which cause more failures.
+*** Action: When a bug is intermittent, ask: "What shared or finite resource could be exhausted or contended at the moment of failure?" Then measure that resource's utilization at failure time vs. success time.
 ** 6. Prove the Negative
 Proving a negative is often the fastest way to eliminate entire categories of hypotheses.
 *** Principle: Instead of trying to confirm what the bug *is*, prove what it *isn't*. A single test that rules out an entire class of causes (e.g., "the bug reproduces without the network, so it's not a network issue") is worth more than ten tests that incrementally narrow within a single class.
 *** Action: For each hypothesis category, design the cheapest possible test that would conclusively rule it out. Run those elimination tests before pursuing any single hypothesis in depth.
+*** But proving a negative requires exhaustive coverage
+A negative conclusion ("X didn't happen") is only as strong as the coverage of the sources you checked. If you searched one log and found nothing, you've only proven X didn't happen *within that log's scope*. The system may have multiple logging layers, each with architectural blind spots. Before accepting a negative, enumerate every source that would record the event and check each one. A negative from a single source is a *lead*, not a conclusion.
 ** 7. Don't Debug the Library Before the System
 Trust the library until you have verified that the system (OS/Kernel) is delivering the raw materials correctly.
+*** Principle: Libraries are well-tested by many users; your system configuration and inputs are unique to you. When a library appears to malfunction, the problem is more often in what you're feeding it than in the library itself.
+*** Action: Before reading library source code, verify that the inputs to the library (files, environment variables, network responses, configuration) are exactly what the library expects. Use the library's own diagnostic or verbose mode if available.
+*** Caveat: This heuristic reverses for observability tools and telemetry pipelines. When the "library" is a logging or monitoring system, do not blindly trust its completeness. Telemetry systems can have architectural blind spots (see tip #21). "The monitoring says nothing happened" may mean the monitoring has a gap, not that nothing happened.
 ** 8. The "Trap" Technique
 When logs are ambiguous, create a "trap." Writing small, aggressive diagnostic traps is often more effective than passive logging.
+*** Principle: Passive logging tells you what the system chose to report. A trap forces the system to reveal specific state at a specific moment, even state the system wouldn't normally log. Traps are targeted; logs are general.
+*** Action: Insert a conditional check at the suspected failure point that captures and emits the exact state you need (e.g., a temporary assertion that dumps a variable when an unexpected condition is met, a tcpdump capturing only packets to a specific host, a file-system watch on a specific path). Remove the trap after diagnosis.
+*** When to use: When you have a hypothesis about what's going wrong but the existing logs don't confirm or deny it. A trap converts a hypothesis into a testable prediction.
 ** 9. Trace the Lifecycle, Not the Error Location
 Don't focus on where the error is reported. Instead, find where the problematic value is *created*, *assigned*, and *used*. The root cause is usually upstream of where symptoms appear.
-*** Action: Search for all assignment sites, not just the line the error mentions.
+*** Action: In code, search for all assignment sites, not just the line the error mentions. In systems, trace the request or data through every component it passes through, not just the one that reported the failure.
 *** Goal: Understand the full journey of the data or object before deciding where to intervene.
 ** 10. Map All Possibilities Before Fixing
 Before adding any fix, enumerate every value or state the problematic element can hold across all code paths. Write them down explicitly.
@@ -64,6 +82,8 @@ When data crosses component boundaries, verify that producer and consumer agree 
 If any filtering operation (threshold, query, predicate) returns zero results when you expect many, the data usually exists but fails the filter criteria.
 *** Principle: "No results" from a filter rarely means "no data" - it usually means "data exists but doesn't match."
 *** Action: Before investigating data sources, print the filter criteria alongside sample values being filtered to see why they're rejected.
+*** Second case: the data was never in this source
+Zero results can also mean the event was never recorded in the data source you're querying, not because it didn't happen, but because of an architectural gap in the recording pipeline. Ask: "Does this source have complete coverage for the class of event I'm looking for, or could it be recorded only in a different layer?" A load balancer log, an application log, and a gateway log may each capture overlapping but not identical sets of events. An event absent from one may be present in another.
 ** 15. Trace the Full Pipeline in One Pass
 Before adding diagnostics incrementally, map out the complete data flow and instrument every stage simultaneously.
 *** Principle: Incremental debugging (add one print, run, add another, run) wastes cycles. A single test run with visibility into all stages reveals the failing boundary immediately.
@@ -102,3 +122,18 @@ Before implementing a fix, ask: "Does this hypothesis fully account for every ob
 *** Principle: A correct root-cause hypothesis must explain all the evidence. If your theory explains why output looks wrong but not why a function returns zero results, the theory is incomplete — and any fix based on it will not resolve the real problem.
 *** Action: Before writing any fix, list every observed symptom. Check each one against your hypothesis. If any symptom remains unexplained, keep investigating instead of implementing a partial fix.
 *** Anti-pattern: Observing that component A has a plausible defect, fixing it, and discovering the real failure was in component B — which you never examined because the defect in A seemed like a sufficient explanation.
+** 24. Absence of Evidence Is Not Evidence of Absence
+When an investigation finds no trace of an event in a data source, the instinct is to conclude the event didn't happen. This is only valid if the data source has proven, complete coverage for that class of event. Systems often have multiple overlapping telemetry layers (e.g., edge logs, gateway logs, application logs, audit logs), each with different coverage boundaries. An event blocked at an upstream layer may never reach a downstream layer's telemetry, creating an architectural blind spot that looks like "the event didn't happen." (This is the deeper principle behind tip #6's coverage requirement and tip #14's second case.)
+*** Principle: "I didn't find it" means "it's not in this source," not "it didn't occur." Treat zero results from a single source as a partial answer, not a definitive one.
+*** Action: Before concluding that an event didn't happen, enumerate every system in the request/data path that could record it. Check each layer, starting from the outermost (closest to the origin). Only conclude "it didn't happen" when every layer agrees.
+*** Anti-pattern: Finding zero results in a single telemetry source, then constructing an elaborate alternative theory (proxy issues, network failures, client bugs) to explain the absence. The simplest explanation for "not in this layer" is often "recorded in a different layer."
+** 25. Seek Disconfirming Evidence After Forming a Hypothesis
+Once you have a plausible hypothesis, the natural tendency is to seek evidence that confirms it. Every observation gets interpreted through the lens of the current theory. This confirmation bias can lead you to build an internally consistent but completely wrong narrative.
+*** Principle: A good hypothesis should be tested by trying to disprove it, not by accumulating supporting evidence. One disconfirming fact is worth more than ten confirming ones.
+*** Action: After forming a hypothesis, explicitly ask: "What would I expect to see if this hypothesis were wrong?" Then look for that specific evidence. If you cannot find disconfirming evidence, verify that you looked in a place where it would actually appear.
+*** Example: If your hypothesis is "the request never reached the server," look for any server-side trace of the request (not just the application log you already checked). If your hypothesis is "the error is caused by a proxy," look for server-side evidence of the error that would rule out the proxy.
+** 26. Confidence Requires Both Source Coverage and Data Consistency
+Internal consistency of a dataset is necessary but not sufficient for high confidence. A dataset may be perfectly clean, complete, and self-consistent, yet represent only a slice of reality. If every row in a table shows "success," the correct conclusion is "every event recorded in this table was successful," not "every event was successful." Consistency tells you the data doesn't contradict itself; coverage tells you how much of reality the data represents. You need both.
+*** Principle: Confidence in a conclusion should scale with both the consistency of each source and the number of independent sources that corroborate it. A consistent single source is better than an inconsistent one, but multiple independent consistent sources are stronger than any single source alone.
+*** Action: When labeling confidence on a finding, state which sources were checked and which were not. "Verified" should mean corroborated across multiple independent sources. "High confidence" should mean supported by one source with no known coverage gaps. "Assumption" should mean supported by one source with known or unknown coverage gaps.
+*** Anti-pattern: Writing "100% certain" or "definitive" based on a single data source, no matter how clean the data looks. Consistency without coverage creates false certainty.
