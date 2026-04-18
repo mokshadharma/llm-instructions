@@ -882,6 +882,30 @@ Don't delete lines individually (`55d`, `54d`, `53d`, ...) when they're contiguo
 50,55d
 ```
 
+**CRITICAL: Always print a range before deleting it.** Before executing any range delete — especially ranges ending with `$` (end-of-file) — print the range first to verify it contains ONLY what you intend to remove. You may have forgotten content appended earlier in the session that now sits at the bottom of the file.
+
+```bash
+# WRONG: Delete without looking — risks deleting forgotten content
+90,$d
+
+# RIGHT: Print the range first in a separate invocation
+ed -s file.py <<'EDSCRIPT4829'
+H
+90,$n
+Q
+EDSCRIPT4829
+
+# Only after confirming the range contains exactly what you expect:
+ed -s file.py <<'EDSCRIPT4829'
+H
+90,$d
+w
+q
+EDSCRIPT4829
+```
+
+**Why `$` ranges are especially dangerous:** When splitting a file or removing a section, you naturally think "everything from line N to the end is category X." But if you appended content after that section during the same session, the `$` range silently includes it. Printing first eliminates this assumption.
+
 **When to use range delete vs separate invocations:**
 - **Range delete (`50,55d`)**: When deleting a *contiguous block* of lines - this is ONE operation
 - **Separate invocations**: When deleting *non-contiguous* lines at different locations (e.g., lines 120, 85, and 12)
