@@ -52,7 +52,7 @@ A negative conclusion ("X didn't happen") is only as strong as the coverage of t
 Trust the library until you have verified that the system (OS/Kernel) is delivering the raw materials correctly.
 *** Principle: Libraries are well-tested by many users; your system configuration and inputs are unique to you. When a library appears to malfunction, the problem is more often in what you're feeding it than in the library itself.
 *** Action: Before reading library source code, verify that the inputs to the library (files, environment variables, network responses, configuration) are exactly what the library expects. Use the library's own diagnostic or verbose mode if available.
-*** Caveat: This heuristic reverses for observability tools and telemetry pipelines. When the "library" is a logging or monitoring system, do not blindly trust its completeness. Telemetry systems can have architectural blind spots (see tip #21). "The monitoring says nothing happened" may mean the monitoring has a gap, not that nothing happened.
+*** Caveat: This heuristic reverses for observability tools and telemetry pipelines. When the "library" is a logging or monitoring system, do not blindly trust its completeness. Telemetry systems can have architectural blind spots (see tip #24). "The monitoring says nothing happened" may mean the monitoring has a gap, not that nothing happened.
 ** 8. The "Trap" Technique
 When logs are ambiguous, create a "trap." Writing small, aggressive diagnostic traps is often more effective than passive logging.
 *** Principle: Passive logging tells you what the system chose to report. A trap forces the system to reveal specific state at a specific moment, even state the system wouldn't normally log. Traps are targeted; logs are general.
@@ -137,3 +137,13 @@ Internal consistency of a dataset is necessary but not sufficient for high confi
 *** Principle: Confidence in a conclusion should scale with both the consistency of each source and the number of independent sources that corroborate it. A consistent single source is better than an inconsistent one, but multiple independent consistent sources are stronger than any single source alone.
 *** Action: When labeling confidence on a finding, state which sources were checked and which were not. "Verified" should mean corroborated across multiple independent sources. "High confidence" should mean supported by one source with no known coverage gaps. "Assumption" should mean supported by one source with known or unknown coverage gaps.
 *** Anti-pattern: Writing "100% certain" or "definitive" based on a single data source, no matter how clean the data looks. Consistency without coverage creates false certainty.
+** 27. Recurrence Requires More Than One Observation
+One confirmed instance proves that something can happen. It does not prove that it happens often. Claims like "frequent," "repeated," or "keeps happening" require confirmation at multiple independent points in time; each additional recurrence strengthens the claim that the event is a pattern rather than an anecdote.
+*** Principle: Existence and frequency are different claims. One observation proves possibility; recurrence requires separate observations over time.
+*** Action: When someone claims repetition, look for the same signal in multiple distinct time windows instead of stopping at the first match.
+*** Anti-pattern: Finding one corroborating example and treating it as proof that the problem is common, ongoing, or increasing.
+** 28. Zero Results Can Mean the Question Is Wrong
+An empty result does not always mean the evidence is absent. It can also mean the search was framed too narrowly, too precisely, or against the wrong representation of the thing being sought. When a targeted lookup returns nothing, broaden the search first and verify how the evidence is actually recorded before concluding it is missing. (This complements tip #14, where the data exists but fails the filter, and tip #24, where the data exists in a different source. Here, the data exists in the same source but under a different name or structure.)
+*** Principle: A failed lookup is evidence about the search method as much as about the underlying reality.
+*** Action: If a precise search returns nothing, retry with a broader, less constrained search built from the most literal identifying details, then refine once you find how the evidence appears.
+*** Anti-pattern: Treating zero results from one narrowly constructed search as proof that no record exists.
