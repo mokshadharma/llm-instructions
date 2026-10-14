@@ -60,7 +60,7 @@ When logs are ambiguous, create a "trap." Writing small, aggressive diagnostic t
 *** When to use: When you have a hypothesis about what's going wrong but the existing logs don't confirm or deny it. A trap converts a hypothesis into a testable prediction.
 ** 9. Trace the Lifecycle, Not the Error Location
 Don't focus on where the error is reported. Instead, find where the problematic value is *created*, *assigned*, and *used*. The root cause is usually upstream of where symptoms appear.
-*** Action: In code, search for all assignment sites, not just the line the error mentions. In systems, trace the request or data through every component it passes through, not just the one that reported the failure.
+*** Action: In code, search for all assignment sites, not just the line the error mentions. In systems, trace the request or data through every component it passes through, not just the one that reported the failure. When a candidate explanation predicts effects at a different level or dimension from the visible observation, use tip #36 to choose the level at which to trace.
 *** Goal: Understand the full journey of the data or object before deciding where to intervene.
 ** 10. Map All Possibilities Before Fixing
 Before adding any fix, enumerate every value or state the problematic element can hold across all code paths. Write them down explicitly.
@@ -88,6 +88,10 @@ Zero results can also mean the event was never recorded in the data source you'r
 Before adding diagnostics incrementally, map out the complete data flow and instrument every stage simultaneously.
 *** Principle: Incremental debugging (add one print, run, add another, run) wastes cycles. A single test run with visibility into all stages reveals the failing boundary immediately.
 *** Action: Identify all transformation stages, add logging at each boundary in one edit, then run once and analyze the full trace.
+*** Reconcile the Relationship at a Relevant Boundary
+Observing both sides of a boundary is not enough. State the expected relationship between the observations, including legitimate split, merge, filtering, delay, retry, duplication, sampling, cancellation, aggregation, change of identity, or expected random variation.
+**** Action: First define the comparison unit. Align scope, observation period, and completion state where possible; otherwise state and account for differences, including observation lag, incomplete outcomes, and unequal coverage. Use identities only when the process is expected to preserve them; otherwise compare justified keys, attributes, ranges, rates, or distributions. Separate outcomes explained by the expected relationship from the unexplained remainder.
+Treat an unexplained remainder as positive evidence that the expected relationship, the observations, or the process differ. Find the earliest observed boundary in the available evidence where the difference appears, then test whether it clusters along a dimension relevant to a candidate explanation, such as time, sequence, group, category, or position. This narrows the search but does not identify the causal boundary or where the cause originated. Use the shape of the difference to choose the next discriminating test, not as proof of a cause. If candidate explanations predict effects at different levels, see tip #36.
 ** 16. Binary Search the Pipeline
 When data flows through N stages and output is wrong, don't debug linearly from stage 1. Start at the middle stage.
 *** Principle: If the middle stage shows correct data, the bug is downstream. If wrong, it's upstream. This finds the failing stage in log(N) steps instead of N.
@@ -124,10 +128,12 @@ Before implementing a fix, ask: "Does this hypothesis fully account for every ob
 *** Principle: A correct root-cause hypothesis must explain all the evidence. If your theory explains why output looks wrong but not why a function returns zero results, the theory is incomplete — and any fix based on it will not resolve the real problem.
 *** Action: Before writing any fix, list every observed symptom. Check each one against your hypothesis. If any symptom remains unexplained, keep investigating instead of implementing a partial fix.
 *** Anti-pattern: Observing that component A has a plausible defect, fixing it, and discovering the real failure was in component B — which you never examined because the defect in A seemed like a sufficient explanation.
+*** Parallel-work corollary
+When an investigation is split, assign responsibility for testing whether the combined findings explain the full symptom and whether any handoff remains unexamined. Separate complete-looking reports do not compose into an end-to-end explanation by themselves.
 ** 24. Absence of Evidence Is Not Evidence of Absence
 When an investigation finds no trace of an event in a data source, the instinct is to conclude the event didn't happen. This is only valid if the data source has proven, complete coverage for that class of event. Systems often have multiple overlapping telemetry layers (e.g., edge logs, gateway logs, application logs, audit logs), each with different coverage boundaries. An event blocked at an upstream layer may never reach a downstream layer's telemetry, creating an architectural blind spot that looks like "the event didn't happen." (This is the deeper principle behind tip #6's coverage requirement and tip #14's second case.)
 *** Principle: "I didn't find it" means "it's not in this source," not "it didn't occur." Treat zero results from a single source as a partial answer, not a definitive one.
-*** Action: Before concluding that an event didn't happen, enumerate every system in the request/data path that could record it. Check each layer, starting from the outermost (closest to the origin). Only conclude "it didn't happen" when every layer agrees.
+*** Action: Before concluding that an event didn't happen, enumerate every system in the request/data path that could record it. Check each layer, starting from the outermost (closest to the origin). Only conclude "it didn't happen" when every layer agrees. If the source may contain the evidence under another representation, see tip #28. If candidate explanations operate at a different level or dimension from the reported observation, see tip #36.
 *** Anti-pattern: Finding zero results in a single telemetry source, then constructing an elaborate alternative theory (proxy issues, network failures, client bugs) to explain the absence. The simplest explanation for "not in this layer" is often "recorded in a different layer."
 ** 25. Seek Disconfirming Evidence After Forming a Hypothesis
 Once you have a plausible hypothesis, the natural tendency is to seek evidence that confirms it. Every observation gets interpreted through the lens of the current theory. This confirmation bias can lead you to build an internally consistent but completely wrong narrative.
@@ -147,12 +153,12 @@ One confirmed instance proves that something can happen. It does not prove that 
 ** 28. Zero Results Can Mean the Question Is Wrong
 An empty result does not always mean the evidence is absent. It can also mean the search was framed too narrowly, too precisely, or against the wrong representation of the thing being sought. When a targeted lookup returns nothing, broaden the search first and verify how the evidence is actually recorded before concluding it is missing. (This complements tip #14, where the data exists but fails the filter, and tip #24, where the data exists in a different source. Here, the data exists in the same source but under a different name or structure.)
 *** Principle: A failed lookup is evidence about the search method as much as about the underlying reality.
-*** Action: If a precise search returns nothing, retry with a broader, less constrained search built from the most literal identifying details, then refine once you find how the evidence appears.
-*** Anti-pattern: Treating zero results from one narrowly constructed search as proof that no record exists.
+*** Action: If a precise search returns nothing, retry with a broader, less constrained search built from the most literal identifying details, then refine once you find how the evidence appears. If repeated variations of the same lookup stop adding information, state the narrow claim that the search supports, then change the question, representation, unit of analysis, or evidence source. Exhausting one search strategy does not exhaust the investigation. Stop when another available test would not materially reduce the uncertainty relevant to the decision, and state the remaining uncertainty explicitly.
+*** Anti-pattern: Treating exhaustion of one lookup, representation, level, or source as exhaustion of the investigation.
 ** 29. Order Tests by Information Per Effort (Cheapest Hypothesis-Halving Test First)
 Debugging efficiency depends less on which tests you run than on the order you run them in. The most common time sink is iterating expensively inside one hypothesis before running the cheap test that would have eliminated half the possibilities at once.
 *** Principle: A five-minute test that rules out an entire category is worth more than an hour of variations within a single theory. The best next test maximizes (hypotheses eliminated / cost), not (confidence gained in the theory you already favor).
-*** Action: Before acting on any hypothesis, enumerate the candidate causes and the tests available. For each test, estimate how much of the space it eliminates and what it costs, then run the highest-ratio test first. Two moves are almost always high-ratio: resolving the fault to a concrete location (tip #21) and diffing against a known-good baseline (tip #17).
+*** Action: Before acting on any hypothesis, enumerate the candidate causes and the tests available. For each test, estimate how much of the space it eliminates and what it costs, then run the highest-ratio test first. Two moves are almost always high-ratio: resolving the fault to a concrete location (tip #21) and diffing against a known-good baseline (tip #17). When repeated searches continue to answer the same narrow question, use tip #28 to change the question or representation before spending more effort.
 *** Anti-pattern: Running a long sequence of same-subsystem tweaks - each a full investigate-test cycle - while a single cheaper test that would have redirected the whole investigation sits un-run.
 ** 30. Ineffective Fixes Are Evidence
 A change that produces no effect is not a wasted step - it is a measurement. Repeated no-ops carry information about where the cause is *not*.
@@ -239,3 +245,11 @@ every version-sensitive conclusion as provisional.
 Diagnosing against the latest branch while the deployed binary is two
 releases old — or reading current source for an install that was last
 touched before the relevant feature existed.
+** 36. Choose the Unit of Analysis That Discriminates Between Hypotheses
+An outcome may be reported at one level while candidate explanations predict differences at another. One observation may reflect a group-level process, while a healthy aggregate may conceal a local pattern. This complements tip #9's lifecycle trace and tip #15's boundary map by asking where competing explanations make different predictions.
+*** Principle
+For each remaining hypothesis, analyze the evidence at the level or along the dimension where that hypothesis makes a discriminating prediction. Do not infer individual behavior from an aggregate or an aggregate pattern from one individual.
+*** Action
+For each hypothesis, name the unit in which the observation or question is framed, the process, condition, or decision proposed as an explanation, and the unit, level, or dimension at which it predicts a difference. Compare like with like using cases, baselines, counterfactuals, rates, or distributions as appropriate. If the comparison cannot distinguish the remaining hypotheses, change the level or dimension and test again. Do not require a complete population when a bounded and genuinely comparable set can answer the question.
+*** Anti-pattern
+Continuing at the visible unit when the hypothesis predicts differences at another level or dimension, or treating evidence at one level as if it automatically applies at another.
